@@ -21,7 +21,7 @@ jobs:
         run: npm install
 
       - name: Build project
-        run: npm run build --base=/sheet-music-trainer/
+        run: npm run build -- --base=/sheet-music-trainer/
 
       - name: Upload production-ready build files
         uses: actions/upload-artifact@v3

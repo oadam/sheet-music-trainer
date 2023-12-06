@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
-import { System, Vex } from 'vexflow'
+import { onMounted, watch } from 'vue'
+import { Vex } from 'vexflow'
 
 const props = defineProps<{ 
   clef: 'treble',

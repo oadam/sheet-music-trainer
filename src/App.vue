@@ -305,6 +305,10 @@ window.onkeydown = (e) => {
       /></label>
     </aside>
   </div>
+  <footer>
+        Source code hosted on <a href="https://github.com/oadam/sheet-music-trainer">github</a>
+
+  </footer>
 </template>
 
 <style scoped>

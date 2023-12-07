@@ -216,7 +216,7 @@ window.onkeydown = (e) => {
   </p>
   <div class="wrapper">
     <div class="main">
-      <h2>Note</h2>
+      <h2>Game</h2>
       <Vecflow
         v-if="state != 'paused'"
         clef="treble"

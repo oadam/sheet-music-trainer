@@ -100,20 +100,36 @@ interface Stat {
   avgDuration: number;
   percentCorrect: number;
 }
-const stats = computed<Stat[]>(() =>
-  Array.from(lastGuesses.value.values.entries(), ([note, guesses]) => {
-    const percentCorrect =
-      guesses.reduce((sum, g) => (g.failed ? 0 : 1) + sum, 0) / guesses.length;
+const stats = computed<Stat[]>(() => {
+  const result: Stat[] = [];
+  for (
+    let note = settings.value.minNote;
+    note <= settings.value.maxNote;
+    note++
+  ) {
+    const guesses = lastGuesses.value.values.get(note);
+    const label = getNoteFullLabel(note, langNotes.value);
+    const stat: Stat = !guesses
+      ? {
+          note,
+          label,
+          avgDuration: guessTime.value,
+          percentCorrect: 0,
+        }
+      : {
+          note,
+          label,
+          avgDuration:
+            guesses.reduce((sum, g) => g.duration + sum, 0) / guesses.length,
+          percentCorrect:
+            guesses.reduce((sum, g) => (g.failed ? 0 : 1) + sum, 0) /
+            guesses.length,
+        };
+    result.push(stat);
+  }
+  return result;
+});
 
-    return {
-      note,
-      label: getNoteFullLabel(note, langNotes.value),
-      avgDuration:
-        guesses.reduce((sum, g) => g.duration + sum, 0) / guesses.length,
-      percentCorrect,
-    };
-  })
-);
 const noteKeytouch = computed(() => langNote.value[0].toLowerCase());
 const state = ref<"paused" | "started" | "error">("paused");
 const guessTime = ref(1000);
@@ -306,8 +322,8 @@ window.onkeydown = (e) => {
     </aside>
   </div>
   <footer>
-        Source code hosted on <a href="https://github.com/oadam/sheet-music-trainer">github</a>
-
+    Source code hosted on
+    <a href="https://github.com/oadam/sheet-music-trainer">github</a>
   </footer>
 </template>
 

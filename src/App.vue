@@ -12,7 +12,8 @@ const getNoteOctave = (note: number) => Math.floor(note / 7);
 const getNoteLabel = (note: number, langNotes: string[]) =>
   langNotes[Math.floor(note % 7)];
 const getNoteFullLabel = (note: number, langNotes: string[]) =>
-  langNotes[Math.floor(note % 7)] + getNoteOctave(note);
+  langNotes[Math.floor(note % 7)] +
+  String.fromCharCode("₀".charCodeAt(0) + getNoteOctave(note));
 
 const EVICT_AFTER = 20;
 const lastGuesses = ref(new EvictingMultiMap<number, Guess>(EVICT_AFTER));
@@ -90,7 +91,7 @@ const maxNoteOptions = computed(() =>
     disabled: note <= settings.value.minNote,
   }))
 );
-const englishNote = computed(
+const vecflowNote = computed(
   () => getNoteLabel(note.value, ENGLISH_NOTES) + getNoteOctave(note.value)
 );
 const langNote = computed(() => getNoteLabel(note.value, langNotes.value));
@@ -236,7 +237,7 @@ window.onkeydown = (e) => {
       <Vecflow
         v-if="state != 'paused'"
         clef="treble"
-        :note="englishNote"
+        :note="vecflowNote"
       ></Vecflow>
       <div class="paused" v-if="state == 'paused'">
         Game is paused. Press "s" to start

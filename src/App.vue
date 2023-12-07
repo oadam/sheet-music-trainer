@@ -190,35 +190,35 @@ const start = () => {
 };
 
 window.onkeydown = (e) => {
-  switch (e.key) {
-    case "p":
-      state.value = "paused";
-      break;
-    case "s":
-      if (state.value != "started") {
+  const goodGuess = e.key == noteKeytouch.value;
+  switch (state.value) {
+    case "paused":
+      if (e.key == "s") {
         state.value = "started";
       }
       break;
-    default:
-      if (state.value == "paused") {
-        return;
-      }
-      const failed = e.key != noteKeytouch.value;
-      if (state.value == "started") {
-        lastGuesses.value.add(note.value, {
-          failed: failed,
-          duration: failed
-            ? guessTime.value
-            : Date.now() - guessTimeoutStarted.value,
-        });
-        if (failed) {
-          state.value = "error";
-        } else {
-          start();
-        }
-      } else if (state.value == "error" && !failed) {
+    case "error":
+      if (goodGuess) {
         state.value = "started";
       }
+      break;
+    case "started":
+      if (e.key == "p") {
+        state.value = "paused";
+        break;
+      }
+      lastGuesses.value.add(note.value, {
+        failed: !goodGuess,
+        duration: goodGuess
+          ? Date.now() - guessTimeoutStarted.value
+          : guessTime.value,
+      });
+      if (goodGuess) {
+        start();
+      } else {
+        state.value = "error";
+      }
+      break;
   }
 };
 </script>

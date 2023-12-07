@@ -39,20 +39,15 @@ onMounted(() => {
     }
   }
 });
-const MIN_NOTE = 23;
-const MAX_NOTE = 44;
-const ALL_NOTES = Array.from(
-  { length: MAX_NOTE - MIN_NOTE + 1 },
-  (_value, index) => MIN_NOTE + index
-);
-const settings = ref({
-  minNote: 28,
-  maxNote: 28 + 3,
+const DEFAULT_SETTINGS = {
+  extraBars: 1,
   goodThreshold: 0.8,
   perfectThreshold: 0.99,
   goodScarcity: 3,
   perfectScarcity: 10,
-});
+};
+
+const settings = ref({ ...DEFAULT_SETTINGS });
 watch(
   settings,
   (s) => {
@@ -64,32 +59,40 @@ onMounted(() => {
   const storedSettings = localStorage.getItem("settings");
   if (storedSettings) {
     try {
-      settings.value = JSON.parse(storedSettings);
+      settings.value = { ...DEFAULT_SETTINGS, ...JSON.parse(storedSettings) };
     } catch (e) {
       console.error(e);
     }
   }
 });
+const hiddenNotes = ref(new Set<number>());
+watch(
+  hiddenNotes,
+  (s) => {
+    localStorage.setItem("hiddenNotes", JSON.stringify(Array.from(s)));
+  },
+  { deep: true }
+);
+onMounted(() => {
+  const storedHiddenNotes = localStorage.getItem("hiddenNotes");
+  if (storedHiddenNotes) {
+    try {
+      hiddenNotes.value = new Set(JSON.parse(storedHiddenNotes));
+    } catch (e) {
+      console.error(e);
+    }
+  }
+});
+const toggleNote = (note: number) =>
+  hiddenNotes.value.has(note)
+    ? hiddenNotes.value.delete(note)
+    : hiddenNotes.value.add(note);
 const note = ref(28);
 const ENGLISH_NOTES = ["C", "D", "E", "F", "G", "A", "B"];
 const FRENCH_NOTES = ["Do", "Ré", "Mi", "Fa", "Sol", "La", "Si", "Do"];
 const lang = ref<"fr" | "en">("fr");
 const langNotes = computed(() =>
   lang.value == "fr" ? FRENCH_NOTES : ENGLISH_NOTES
-);
-const minNoteOptions = computed(() =>
-  ALL_NOTES.map((note) => ({
-    label: getNoteFullLabel(note, langNotes.value),
-    value: note,
-    disabled: note >= settings.value.maxNote,
-  }))
-);
-const maxNoteOptions = computed(() =>
-  ALL_NOTES.map((note) => ({
-    label: getNoteFullLabel(note, langNotes.value),
-    value: note,
-    disabled: note <= settings.value.minNote,
-  }))
 );
 const vecflowNote = computed(
   () => getNoteLabel(note.value, ENGLISH_NOTES) + getNoteOctave(note.value)
@@ -101,13 +104,11 @@ interface Stat {
   avgDuration: number;
   percentCorrect: number;
 }
+const minNote = computed(() => 28 - 2 * settings.value.extraBars);
+const maxNote = computed(() => 36 + 2 * settings.value.extraBars);
 const stats = computed<Stat[]>(() => {
   const result: Stat[] = [];
-  for (
-    let note = settings.value.minNote;
-    note <= settings.value.maxNote;
-    note++
-  ) {
+  for (let note = minNote.value; note <= maxNote.value; note++) {
     const guesses = lastGuesses.value.values.get(note);
     const label = getNoteFullLabel(note, langNotes.value);
     const stat: Stat = !guesses
@@ -135,6 +136,12 @@ const noteKeytouch = computed(() => langNote.value[0].toLowerCase());
 const state = ref<"paused" | "started" | "error">("paused");
 const guessTime = ref(1000);
 const guessTimeoutStarted = ref(0);
+const nonHiddenNotes = computed<number[]>(() =>
+  Array.from(
+    { length: maxNote.value - minNote.value + 1 },
+    (_v, i) => minNote.value + i
+  ).filter((n) => !hiddenNotes.value.has(n))
+);
 let guessTimeout: number | undefined = undefined;
 watch(state, (s) => {
   if (s != "started") {
@@ -152,7 +159,7 @@ const chooseNextNote = () => {
   }
   let totalProb = 0;
   let candidates: { totalProbAfter: number; note: number }[] = [];
-  for (let n = settings.value.minNote; n <= settings.value.maxNote; n++) {
+  for (const n of nonHiddenNotes.value) {
     if (n == note.value) {
       continue;
     }
@@ -248,8 +255,17 @@ window.onkeydown = (e) => {
     </div>
     <div class="stats">
       <h2>Stats</h2>
-      <div v-for="stat in stats">
-        {{ stat.label }}:
+      <div
+        v-for="stat in stats"
+        class="stat"
+        :class="{ hidden: hiddenNotes.has(stat.note) }"
+      >
+        <input
+          type="checkbox"
+          :checked="!hiddenNotes.has(stat.note)"
+          @click="toggleNote(stat.note)"
+        />
+        {{ stat.label }}
         <meter
           :low="settings.goodThreshold"
           :high="settings.perfectThreshold"
@@ -261,26 +277,10 @@ window.onkeydown = (e) => {
     <aside class="settings">
       <h2>Settings</h2>
       <label
-        >Min note :
-        <select v-model="settings.minNote">
-          <option
-            v-for="o in minNoteOptions"
-            :value="o.value"
-            :disabled="o.disabled"
-          >
-            {{ o.label }}
-          </option>
-        </select>
-      </label>
-      <label
-        >Max note :
-        <select v-model="settings.maxNote">
-          <option
-            v-for="o in maxNoteOptions"
-            :value="o.value"
-            :disabled="o.disabled"
-          >
-            {{ o.label }}
+        >Extra bars :
+        <select v-model="settings.extraBars">
+          <option v-for="o in 4" :value="o - 1">
+            {{ o - 1 }}
           </option>
         </select>
       </label>
@@ -339,6 +339,9 @@ aside {
     display: block;
     padding-bottom: 1rem;
   }
+}
+.stat.hidden {
+  opacity: 0.6;
 }
 .main {
   width: 300px;

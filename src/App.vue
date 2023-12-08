@@ -41,6 +41,7 @@ onMounted(() => {
 });
 const DEFAULT_SETTINGS = {
   extraBars: 1,
+  lang: "fr" as "fr" | "en",
   guessTime: 1000,
   goodThreshold: 0.8,
   perfectThreshold: 0.99,
@@ -91,9 +92,8 @@ const toggleNote = (note: number) =>
 const note = ref(28);
 const ENGLISH_NOTES = ["C", "D", "E", "F", "G", "A", "B"];
 const FRENCH_NOTES = ["Do", "Ré", "Mi", "Fa", "Sol", "La", "Si", "Do"];
-const lang = ref<"fr" | "en">("fr");
 const langNotes = computed(() =>
-  lang.value == "fr" ? FRENCH_NOTES : ENGLISH_NOTES
+  settings.value.lang == "fr" ? FRENCH_NOTES : ENGLISH_NOTES
 );
 const vecflowNote = computed(
   () => getNoteLabel(note.value, ENGLISH_NOTES) + getNoteOctave(note.value)
@@ -292,7 +292,7 @@ window.onkeydown = (e) => {
       </label>
       <label
         >Lang :
-        <select v-model="lang">
+        <select v-model="settings.lang">
           <option value="fr">French</option>
           <option value="en">English</option>
         </select>

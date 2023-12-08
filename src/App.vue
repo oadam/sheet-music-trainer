@@ -101,6 +101,7 @@ const langNote = computed(() => getNoteLabel(note.value, langNotes.value));
 interface Stat {
   note: number;
   label: string;
+  guessesCount: number;
   avgDuration: number;
   percentCorrect: number;
 }
@@ -110,17 +111,20 @@ const stats = computed<Stat[]>(() => {
   const result: Stat[] = [];
   for (let note = minNote.value; note <= maxNote.value; note++) {
     const guesses = lastGuesses.value.values.get(note);
+    const guessesCount = guesses?.length || 0;
     const label = getNoteFullLabel(note, langNotes.value);
     const stat: Stat = !guesses
       ? {
           note,
           label,
+          guessesCount,
           avgDuration: guessTime.value,
           percentCorrect: 0,
         }
       : {
           note,
           label,
+          guessesCount,
           avgDuration:
             guesses.reduce((sum, g) => g.duration + sum, 0) / guesses.length,
           percentCorrect:
@@ -163,11 +167,13 @@ const chooseNextNote = () => {
     if (n == note.value) {
       continue;
     }
-    const percentCorrect = statsMap.get(n)?.percentCorrect || 0;
+    const stats = statsMap.get(n);
     let prob: number;
-    if (percentCorrect > settings.value.perfectThreshold) {
+    if (!stats || stats.guessesCount < 5) {
+      prob = 1;
+    } else if (stats.percentCorrect > settings.value.perfectThreshold) {
       prob = 1 / settings.value.perfectScarcity;
-    } else if (percentCorrect > settings.value.goodThreshold) {
+    } else if (stats.percentCorrect > settings.value.goodThreshold) {
       prob = 1 / settings.value.goodScarcity;
     } else {
       prob = 1;

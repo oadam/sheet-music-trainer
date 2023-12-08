@@ -41,6 +41,7 @@ onMounted(() => {
 });
 const DEFAULT_SETTINGS = {
   extraBars: 1,
+  guessTime: 1000,
   goodThreshold: 0.8,
   perfectThreshold: 0.99,
   goodScarcity: 3,
@@ -118,7 +119,7 @@ const stats = computed<Stat[]>(() => {
           note,
           label,
           guessesCount,
-          avgDuration: guessTime.value,
+          avgDuration: settings.value.guessTime,
           percentCorrect: 0,
         }
       : {
@@ -138,7 +139,6 @@ const stats = computed<Stat[]>(() => {
 
 const noteKeytouch = computed(() => langNote.value[0].toLowerCase());
 const state = ref<"paused" | "started" | "error">("paused");
-const guessTime = ref(1000);
 const guessTimeoutStarted = ref(0);
 const nonHiddenNotes = computed<number[]>(() =>
   Array.from(
@@ -198,9 +198,9 @@ const start = () => {
     state.value = "error";
     lastGuesses.value.add(note.value, {
       failed: true,
-      duration: guessTime.value,
+      duration: settings.value.guessTime,
     });
-  }, guessTime.value);
+  }, settings.value.guessTime);
 };
 
 window.onkeydown = (e) => {
@@ -225,7 +225,7 @@ window.onkeydown = (e) => {
         failed: !goodGuess,
         duration: goodGuess
           ? Date.now() - guessTimeoutStarted.value
-          : guessTime.value,
+          : settings.value.guessTime,
       });
       if (goodGuess) {
         start();
@@ -298,7 +298,8 @@ window.onkeydown = (e) => {
         </select>
       </label>
       <label
-        >Guess time in ms : <input type="number" min="100" v-model="guessTime"
+        >Guess time in ms :
+        <input type="number" min="100" v-model="settings.guessTime"
       /></label>
       <label
         >good average score threshold :

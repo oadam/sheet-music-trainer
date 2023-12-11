@@ -24,9 +24,8 @@ jobs:
         run: npm run build -- --base=/sheet-music-trainer/
 
       - name: Upload production-ready build files
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-pages-artifact@v1
         with:
-          name: github-pages
           path: ./dist
 
   deploy:

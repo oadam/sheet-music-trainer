@@ -87,16 +87,22 @@ const toggleNote = (note: number) =>
   hiddenNotes.value.has(note)
     ? hiddenNotes.value.delete(note)
     : hiddenNotes.value.add(note);
-const note = ref(28);
+const gameNote = ref(23);
+const hoveredNote = ref(null as number | null);
 const ENGLISH_NOTES = ["C", "D", "E", "F", "G", "A", "B"];
 const FRENCH_NOTES = ["Do", "Ré", "Mi", "Fa", "Sol", "La", "Si", "Do"];
 const langNotes = computed(() =>
   settings.value.lang == "fr" ? FRENCH_NOTES : ENGLISH_NOTES
 );
-const vecflowNote = computed(
-  () => getNoteLabel(note.value, ENGLISH_NOTES) + getNoteOctave(note.value)
-);
-const langNote = computed(() => getNoteLabel(note.value, langNotes.value));
+const vecflowNote = computed(() => {
+  const note = state.value == "paused" ? hoveredNote.value : gameNote.value;
+  if (note === null) {
+    return null;
+  } else {
+    return getNoteLabel(note, ENGLISH_NOTES) + getNoteOctave(note);
+  }
+});
+const langNote = computed(() => getNoteLabel(gameNote.value, langNotes.value));
 interface Stat {
   note: number;
   label: string;
@@ -104,11 +110,11 @@ interface Stat {
   avgDuration: number;
   percentCorrect: number;
 }
-const minNote = computed(() => 28 - 2 * settings.value.extraBars);
-const maxNote = computed(() => 36 + 2 * settings.value.extraBars);
+const minNote = computed(() => 30 - 2 * settings.value.extraBars);
+const maxNote = computed(() => 38 + 2 * settings.value.extraBars);
 const stats = computed<Stat[]>(() => {
   const result: Stat[] = [];
-  for (let note = minNote.value; note <= maxNote.value; note++) {
+  for (let note = maxNote.value; note >= minNote.value; note--) {
     const guesses = lastGuesses.value.values.get(note);
     const guessesCount = guesses?.length || 0;
     const label = getNoteFullLabel(note, langNotes.value);
@@ -162,7 +168,7 @@ const chooseNextNote = () => {
   let totalProb = 0;
   let candidates: { totalProbAfter: number; note: number }[] = [];
   for (const n of nonHiddenNotes.value) {
-    if (n == note.value) {
+    if (n == gameNote.value) {
       continue;
     }
     const stats = statsMap.get(n);
@@ -189,13 +195,13 @@ const chooseNextNote = () => {
 
 const start = () => {
   state.value = "started";
-  note.value = chooseNextNote();
+  gameNote.value = chooseNextNote();
   clearTimeout(guessTimeout);
   guessTimeoutStarted.value = Date.now();
   guessTimeout = setTimeout(() => {
     state.value = "error";
     lastGuesses.value.add(
-      note.value,
+      gameNote.value,
       {
         failed: true,
         duration: settings.value.guessTime,
@@ -206,6 +212,10 @@ const start = () => {
 };
 
 window.onkeydown = (e) => {
+  if (e.key == "p") {
+    state.value = "paused";
+    return;
+  }
   const goodGuess = e.key == noteKeytouch.value;
   switch (state.value) {
     case "paused":
@@ -219,12 +229,8 @@ window.onkeydown = (e) => {
       }
       break;
     case "started":
-      if (e.key == "p") {
-        state.value = "paused";
-        break;
-      }
       lastGuesses.value.add(
-        note.value,
+        gameNote.value,
         {
           failed: !goodGuess,
           duration: goodGuess
@@ -253,14 +259,13 @@ window.onkeydown = (e) => {
   <div class="wrapper">
     <div class="main">
       <h2>Game</h2>
+      <div v-if="state == 'paused'">Game is paused. Press "s" to start</div>
+      <div v-else>Game is started. Press "p" to pause</div>
       <Vecflow
-        v-if="state != 'paused'"
+        v-if="vecflowNote !== null"
         clef="treble"
         :note="vecflowNote"
       ></Vecflow>
-      <div class="paused" v-if="state == 'paused'">
-        Game is paused. Press "s" to start
-      </div>
       <div class="error" v-if="state == 'error'">
         This note is {{ langNote }} ! <br />Press {{ noteKeytouch }} to continue
       </div>
@@ -275,6 +280,8 @@ window.onkeydown = (e) => {
         class="stat"
         :class="{ hidden: hiddenNotes.has(stat.note) }"
         @click="toggleNote(stat.note)"
+        @mouseenter="hoveredNote = stat.note"
+        @mouseleave="hoveredNote = null"
       >
         <input type="checkbox" :checked="!hiddenNotes.has(stat.note)" />
         {{ stat.label }}

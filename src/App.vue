@@ -15,8 +15,7 @@ const getNoteFullLabel = (note: number, langNotes: string[]) =>
   langNotes[Math.floor(note % 7)] +
   String.fromCharCode("₀".charCodeAt(0) + getNoteOctave(note));
 
-const EVICT_AFTER = 20;
-const lastGuesses = ref(new EvictingMultiMap<number, Guess>(EVICT_AFTER));
+const lastGuesses = ref(new EvictingMultiMap<number, Guess>());
 watch(
   lastGuesses,
   (s) =>
@@ -30,10 +29,7 @@ onMounted(() => {
   const storedLastGuesses = localStorage.getItem("lastGuesses");
   if (storedLastGuesses) {
     try {
-      lastGuesses.value = new EvictingMultiMap(
-        EVICT_AFTER,
-        JSON.parse(storedLastGuesses)
-      );
+      lastGuesses.value = new EvictingMultiMap(JSON.parse(storedLastGuesses));
     } catch (e) {
       console.error(e);
     }
@@ -42,11 +38,12 @@ onMounted(() => {
 const DEFAULT_SETTINGS = {
   extraBars: 1,
   lang: "fr" as "fr" | "en",
-  guessTime: 1000,
+  guessTime: 1.5,
   goodThreshold: 0.8,
   perfectThreshold: 0.99,
   goodScarcity: 3,
   perfectScarcity: 10,
+  takeStatsOver: 20,
 };
 
 const settings = ref({ ...DEFAULT_SETTINGS });
@@ -85,6 +82,7 @@ onMounted(() => {
     }
   }
 });
+const reset = () => lastGuesses.value.clear();
 const toggleNote = (note: number) =>
   hiddenNotes.value.has(note)
     ? hiddenNotes.value.delete(note)
@@ -196,11 +194,15 @@ const start = () => {
   guessTimeoutStarted.value = Date.now();
   guessTimeout = setTimeout(() => {
     state.value = "error";
-    lastGuesses.value.add(note.value, {
-      failed: true,
-      duration: settings.value.guessTime,
-    });
-  }, settings.value.guessTime);
+    lastGuesses.value.add(
+      note.value,
+      {
+        failed: true,
+        duration: settings.value.guessTime,
+      },
+      settings.value.takeStatsOver
+    );
+  }, settings.value.guessTime * 1000);
 };
 
 window.onkeydown = (e) => {
@@ -221,12 +223,16 @@ window.onkeydown = (e) => {
         state.value = "paused";
         break;
       }
-      lastGuesses.value.add(note.value, {
-        failed: !goodGuess,
-        duration: goodGuess
-          ? Date.now() - guessTimeoutStarted.value
-          : settings.value.guessTime,
-      });
+      lastGuesses.value.add(
+        note.value,
+        {
+          failed: !goodGuess,
+          duration: goodGuess
+            ? (Date.now() - guessTimeoutStarted.value) / 1000
+            : settings.value.guessTime,
+        },
+        settings.value.takeStatsOver
+      );
       if (goodGuess) {
         start();
       } else {
@@ -260,17 +266,17 @@ window.onkeydown = (e) => {
       </div>
     </div>
     <div class="stats">
-      <h2>Stats</h2>
+      <h2>
+        Stats
+        <small><a @click="reset">reset</a></small>
+      </h2>
       <div
         v-for="stat in stats"
         class="stat"
         :class="{ hidden: hiddenNotes.has(stat.note) }"
+        @click="toggleNote(stat.note)"
       >
-        <input
-          type="checkbox"
-          :checked="!hiddenNotes.has(stat.note)"
-          @click="toggleNote(stat.note)"
-        />
+        <input type="checkbox" :checked="!hiddenNotes.has(stat.note)" />
         {{ stat.label }}
         <meter
           :low="settings.goodThreshold"
@@ -298,8 +304,8 @@ window.onkeydown = (e) => {
         </select>
       </label>
       <label
-        >Guess time in ms :
-        <input type="number" min="100" v-model="settings.guessTime"
+        >Guess time in seconds :
+        <input type="number" min="0.1" step="0.1" v-model="settings.guessTime"
       /></label>
       <label
         >good average score threshold :
@@ -327,6 +333,10 @@ window.onkeydown = (e) => {
         >Perfect notes scarcity :
         <input type="number" v-model="settings.perfectScarcity"
       /></label>
+      <label
+        >Sample size for rating :
+        <input type="number" v-model="settings.takeStatsOver"
+      /></label>
     </aside>
   </div>
   <footer>
@@ -336,6 +346,12 @@ window.onkeydown = (e) => {
 </template>
 
 <style scoped>
+h2 small {
+  font-size: 10px;
+}
+a {
+  cursor: pointer;
+}
 .wrapper {
   display: flex;
   gap: 2rem;
@@ -346,6 +362,9 @@ aside {
     display: block;
     padding-bottom: 1rem;
   }
+}
+.stat {
+  cursor: pointer;
 }
 .stat.hidden {
   opacity: 0.6;

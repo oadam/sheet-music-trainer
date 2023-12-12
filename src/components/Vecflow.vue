@@ -37,4 +37,8 @@ watch(() => props.note, onNote);
   <div id="vecflowDiv"></div>
 </template>
 
-<style scoped></style>
+<style scoped>
+  #vecflowDiv {
+    background: white;
+  }
+</style>

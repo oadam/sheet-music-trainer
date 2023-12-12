@@ -377,5 +377,6 @@ aside {
 }
 .error {
   background-color: #fee;
+  color: black;
 }
 </style>

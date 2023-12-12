@@ -4,10 +4,10 @@ import { Vex } from "vexflow";
 
 const props = defineProps<{
   clef: "treble";
-  note: string;
+  note: string | null;
 }>();
 
-const onNote = (note: string) => {
+const onNote = (note: string | null) => {
   const div = document.getElementById("vecflowDiv");
   if (!div) {
     return;
@@ -18,9 +18,10 @@ const onNote = (note: string) => {
   });
   const score = vf.EasyScore();
   const system = vf.System();
+  const noteString = note === null ? "D5/1/r" : note + "/w";
   system
     .addStave({
-      voices: [score.voice(score.notes(note + "/w"))],
+      voices: [score.voice(score.notes(noteString))],
     })
     .addClef(props.clef)
     .addTimeSignature("4/4");

@@ -261,11 +261,7 @@ window.onkeydown = (e) => {
       <h2>Game</h2>
       <div v-if="state == 'paused'">Game is paused. Press "s" to start</div>
       <div v-else>Game is started. Press "p" to pause</div>
-      <Vecflow
-        v-if="vecflowNote !== null"
-        clef="treble"
-        :note="vecflowNote"
-      ></Vecflow>
+      <Vecflow clef="treble" :note="vecflowNote" />
       <div class="error" v-if="state == 'error'">
         This note is {{ langNote }} ! <br />Press {{ noteKeytouch }} to continue
       </div>

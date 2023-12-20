@@ -38,6 +38,7 @@ onMounted(() => {
 const DEFAULT_SETTINGS = {
   extraBars: 1,
   lang: "fr" as "fr" | "en",
+  clef: "treble" as "treble" | "bass",
   guessTime: 1.5,
   goodThreshold: 0.8,
   perfectThreshold: 0.99,
@@ -110,8 +111,15 @@ interface Stat {
   avgDuration: number;
   percentCorrect: number;
 }
-const minNote = computed(() => 30 - 2 * settings.value.extraBars);
-const maxNote = computed(() => 38 + 2 * settings.value.extraBars);
+const clefMinNote = computed(() =>
+  settings.value.clef === "treble" ? 30 : 18
+);
+const minNote = computed(
+  () => clefMinNote.value - 2 * settings.value.extraBars
+);
+const maxNote = computed(
+  () => clefMinNote.value + 8 + 2 * settings.value.extraBars
+);
 const stats = computed<Stat[]>(() => {
   const result: Stat[] = [];
   for (let note = maxNote.value; note >= minNote.value; note--) {
@@ -261,7 +269,7 @@ window.onkeydown = (e) => {
       <h2>Game</h2>
       <div v-if="state == 'paused'">Game is paused. Press "s" to start</div>
       <div v-else>Game is started. Press "p" to pause</div>
-      <Vecflow clef="treble" :note="vecflowNote" />
+      <Vecflow :clef="settings.clef" :note="vecflowNote" />
       <div class="error" v-if="state == 'error'">
         This note is {{ langNote }} ! <br />Press {{ noteKeytouch }} to continue
       </div>
@@ -273,6 +281,7 @@ window.onkeydown = (e) => {
       </h2>
       <div
         v-for="stat in stats"
+        :key="stat.note"
         class="stat"
         :class="{ hidden: hiddenNotes.has(stat.note) }"
         @click="toggleNote(stat.note)"
@@ -297,6 +306,13 @@ window.onkeydown = (e) => {
           <option v-for="o in 4" :value="o - 1">
             {{ o - 1 }}
           </option>
+        </select>
+      </label>
+      <label
+        >Clef :
+        <select v-model="settings.clef">
+          <option value="treble">Treble</option>
+          <option value="bass">Bass</option>
         </select>
       </label>
       <label

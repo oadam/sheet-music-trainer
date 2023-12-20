@@ -3,11 +3,11 @@ import { onMounted, watch } from "vue";
 import { Vex } from "vexflow";
 
 const props = defineProps<{
-  clef: "treble";
+  clef: "treble" | "bass";
   note: string | null;
 }>();
 
-const onNote = (note: string | null) => {
+const onNote = () => {
   const div = document.getElementById("vecflowDiv");
   if (!div) {
     return;
@@ -18,10 +18,15 @@ const onNote = (note: string | null) => {
   });
   const score = vf.EasyScore();
   const system = vf.System();
-  const noteString = note === null ? "D5/1/r" : note + "/w";
+  let noteString: string;
+  if (props.note !== null) {
+    noteString = props.note + "/w";
+  } else {
+    noteString = (props.clef == "treble" ? "D5" : "F3") + "/1/r";
+  }
   system
     .addStave({
-      voices: [score.voice(score.notes(noteString))],
+      voices: [score.voice(score.notes(noteString, { clef: props.clef }))],
     })
     .addClef(props.clef)
     .addTimeSignature("4/4");
@@ -29,8 +34,9 @@ const onNote = (note: string | null) => {
   vf.draw();
 };
 
-onMounted(() => onNote(props.note));
+onMounted(() => onNote());
 watch(() => props.note, onNote);
+watch(() => props.clef, onNote);
 </script>
 
 <template>
@@ -38,7 +44,7 @@ watch(() => props.note, onNote);
 </template>
 
 <style scoped>
-  #vecflowDiv {
-    background: white;
-  }
+#vecflowDiv {
+  background: white;
+}
 </style>

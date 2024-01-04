@@ -84,6 +84,9 @@ onMounted(() => {
   }
 });
 const reset = () => lastGuesses.value.clear();
+const checkAll = () => hiddenNotes.value.clear();
+const uncheckAll = () =>
+  allNotes.value.forEach((n) => hiddenNotes.value.add(n));
 const toggleNote = (note: number) =>
   hiddenNotes.value.has(note)
     ? hiddenNotes.value.delete(note)
@@ -120,44 +123,44 @@ const minNote = computed(
 const maxNote = computed(
   () => clefMinNote.value + 8 + 2 * settings.value.extraBars
 );
-const stats = computed<Stat[]>(() => {
-  const result: Stat[] = [];
-  for (let note = maxNote.value; note >= minNote.value; note--) {
-    const guesses = lastGuesses.value.values.get(note);
-    const guessesCount = guesses?.length || 0;
-    const label = getNoteFullLabel(note, langNotes.value);
-    const stat: Stat = !guesses
-      ? {
-          note,
-          label,
-          guessesCount,
-          avgDuration: settings.value.guessTime,
-          percentCorrect: 0,
-        }
-      : {
-          note,
-          label,
-          guessesCount,
-          avgDuration:
-            guesses.reduce((sum, g) => g.duration + sum, 0) / guesses.length,
-          percentCorrect:
-            guesses.reduce((sum, g) => (g.failed ? 0 : 1) + sum, 0) /
-            guesses.length,
-        };
-    result.push(stat);
-  }
-  return result;
-});
+const allNotes = computed(() =>
+  Array.from(
+    { length: maxNote.value - minNote.value + 1 },
+    (_x, i) => minNote.value + i
+  )
+);
+const stats = computed<Stat[]>(() =>
+  allNotes.value
+    .map((note) => {
+      const guesses = lastGuesses.value.values.get(note);
+      const guessesCount = guesses?.length || 0;
+      const label = getNoteFullLabel(note, langNotes.value);
+      const stat: Stat = !guesses
+        ? {
+            note,
+            label,
+            guessesCount,
+            avgDuration: settings.value.guessTime,
+            percentCorrect: 0,
+          }
+        : {
+            note,
+            label,
+            guessesCount,
+            avgDuration:
+              guesses.reduce((sum, g) => g.duration + sum, 0) / guesses.length,
+            percentCorrect:
+              guesses.reduce((sum, g) => (g.failed ? 0 : 1) + sum, 0) /
+              guesses.length,
+          };
+      return stat;
+    })
+    .reverse()
+);
 
 const noteKeytouch = computed(() => langNote.value[0].toLowerCase());
 const state = ref<"paused" | "started" | "error">("paused");
 const guessTimeoutStarted = ref(0);
-const nonHiddenNotes = computed<number[]>(() =>
-  Array.from(
-    { length: maxNote.value - minNote.value + 1 },
-    (_v, i) => minNote.value + i
-  ).filter((n) => !hiddenNotes.value.has(n))
-);
 let guessTimeout: number | undefined = undefined;
 watch(state, (s) => {
   if (s != "started") {
@@ -168,6 +171,9 @@ watch(state, (s) => {
   }
 });
 
+const nonHiddenNotes = computed<number[]>(() =>
+  allNotes.value.filter((n) => !hiddenNotes.value.has(n))
+);
 const chooseNextNote = () => {
   let statsMap = new Map<number, Stat>();
   for (const s of stats.value) {
@@ -277,7 +283,11 @@ window.onkeydown = (e) => {
     <div class="stats">
       <h2>
         Stats
-        <small><a @click="reset">reset</a></small>
+        <div class="stat-buttons">
+          <a @click="reset">reset stats</a>
+          <a @click="checkAll">check all</a>
+          <a @click="uncheckAll">uncheck all</a>
+        </div>
       </h2>
       <div
         v-for="stat in stats"
@@ -380,6 +390,14 @@ aside {
   label {
     display: block;
     padding-bottom: 1rem;
+  }
+}
+.stat-buttons {
+  font-size: 10px;
+  display: inline-block;
+  vertical-align: middle;
+  a {
+    display: block;
   }
 }
 .stat {

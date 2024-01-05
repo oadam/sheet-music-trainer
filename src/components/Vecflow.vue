@@ -14,8 +14,9 @@ const onNote = () => {
   }
   div.innerHTML = "";
   const vf = new Vex.Flow.Factory({
-    renderer: { width: 150, height: 150, elementId: "vecflowDiv" },
+    renderer: { width: 300, height: 300, elementId: "vecflowDiv" },
   });
+  vf.getContext().scale(2, 2);
   const score = vf.EasyScore();
   const system = vf.System();
   let noteString: string;

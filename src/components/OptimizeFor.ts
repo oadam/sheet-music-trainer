@@ -32,7 +32,7 @@ export class OptimizeForSpeed implements OptimizeFor {
     return guess.failed ? this.badGuessTime : guess.duration;
   }
   getBadnessDescription(value: number) {
-    return value.toFixed(1) + "s";
+    return value.toFixed(2) + "s";
   }
   getWorstBadness(badnesses: number[]) {
     return Math.max(...badnesses);

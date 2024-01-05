@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Vecflow from "./components/Vecflow.vue";
+import Meter from "./components/Meter.vue";
 import { computed, onMounted, ref, watch } from "vue";
 import EvictingMultiMap from "./types/EvictingMultiMap";
 
@@ -119,12 +120,15 @@ interface Stat {
 type Rating = "bad" | "medium" | "good";
 interface RatedStat extends Stat {
   rating: Rating | undefined;
+  percentValue: number | undefined;
 }
 
-const getRatingColor = (rating: Rating) => {
+const getRatingColor = (rating: Rating | undefined) => {
   switch (rating) {
     case "bad":
       return "red";
+    case undefined:
+      return "pink";
     case "medium":
       return "#ffbd4f";
     case "good":
@@ -249,22 +253,30 @@ const thresholds = computed<{
 const ratedStats = computed<RatedStat[]>(() => {
   return stats.value.map((s) => {
     let rating: Rating | undefined;
-    if (s.badness === undefined) {
-      rating = undefined;
-    } else if (
-      thresholds.value.bad !== undefined &&
-      s.badness >= thresholds.value.bad
-    ) {
-      rating = "bad";
-    } else if (
-      thresholds.value.good !== undefined &&
-      s.badness <= thresholds.value.good
-    ) {
-      rating = "good";
-    } else {
-      rating = "medium";
+    let percentValue: number | undefined;
+    if (s.badness !== undefined) {
+      percentValue =
+        (100 * (worstBadness.value - s.badness!)) /
+        (worstBadness.value - bestBadness.value);
+      if (
+        thresholds.value.bad !== undefined &&
+        s.badness >= thresholds.value.bad
+      ) {
+        rating = "bad";
+      } else if (
+        thresholds.value.good !== undefined &&
+        s.badness <= thresholds.value.good
+      ) {
+        rating = "good";
+      } else {
+        rating = "medium";
+      }
     }
-    return { rating: rating, ...s };
+    return {
+      rating,
+      percentValue,
+      ...s,
+    };
   });
 });
 
@@ -394,17 +406,12 @@ window.onkeydown = (e) => {
         <span class="note-label">
           {{ stat.label }}
         </span>
-        <div
-          class="meter"
-          :min="-worstBadness"
-          :value="-stat.badness!"
+
+        <Meter
+          :percentValue="stat.percentValue"
           :title="stat.description"
-        >
-          <span
-            v-if="stat.rating !== undefined"
-            :style="{background: getRatingColor(stat.rating), width: Math.max(0.05, ((worstBadness - stat.badness!) / (worstBadness - bestBadness)))*100+'%'}"
-          ></span>
-        </div>
+          :color="getRatingColor(stat.rating)"
+        />
       </div>
     </div>
     <aside class="settings">
@@ -483,21 +490,6 @@ a {
 .wrapper {
   display: flex;
   gap: 2rem;
-}
-.meter {
-  display: inline-block;
-  vertical-align: middle;
-  width: 5em;
-  height: 14px;
-  box-sizing: border-box;
-  border-radius: 1em;
-  overflow: hidden;
-  border: solid 1px #999;
-  span {
-    display: inline-block;
-    height: 100%;
-    vertical-align: top;
-  }
 }
 .note-label {
   display: inline-block;

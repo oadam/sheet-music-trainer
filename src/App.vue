@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import Vecflow from "./components/Vecflow.vue";
 import Meter from "./components/Meter.vue";
+import SettingsUI from "./components/SettingsUI.vue";
 import { computed, onMounted, ref, watch } from "vue";
 import EvictingMultiMap from "./types/EvictingMultiMap";
+import {
+  Guess,
+  OptimizeFor,
+  OptimizeForAccuracy,
+  OptimizeForSpeed,
+} from "./components/OptimizeFor";
+import { useSettings } from "./components/Settings";
 
-interface Guess {
-  failed: boolean;
-  duration: number;
-}
-type Mode = "accuracy" | "speed";
-
-const MODES: Mode[] = ["accuracy", "speed"];
 const getNoteOctave = (note: number) => Math.floor(note / 7);
 const getNoteLabel = (note: number, langNotes: string[]) =>
   langNotes[Math.floor(note % 7)];
@@ -19,6 +20,8 @@ const getNoteFullLabel = (note: number, langNotes: string[]) =>
   String.fromCharCode("₀".charCodeAt(0) + getNoteOctave(note));
 
 const lastGuesses = ref(new EvictingMultiMap<number, Guess>());
+const settings = useSettings();
+
 watch(
   lastGuesses,
   (s) =>
@@ -33,36 +36,6 @@ onMounted(() => {
   if (storedLastGuesses) {
     try {
       lastGuesses.value = new EvictingMultiMap(JSON.parse(storedLastGuesses));
-    } catch (e) {
-      console.error(e);
-    }
-  }
-});
-const DEFAULT_SETTINGS = {
-  extraBars: 1,
-  lang: "fr" as "fr" | "en",
-  clef: "treble" as "treble" | "bass",
-  badGuessTime: 5,
-  takeStatsOver: 10,
-  minSampleSize: 3,
-  mode: "accuracy" as Mode,
-  badAbondance: 3,
-  goodScarcity: 3,
-};
-
-const settings = ref({ ...DEFAULT_SETTINGS });
-watch(
-  settings,
-  (s) => {
-    localStorage.setItem("settings", JSON.stringify(s));
-  },
-  { deep: true }
-);
-onMounted(() => {
-  const storedSettings = localStorage.getItem("settings");
-  if (storedSettings) {
-    try {
-      settings.value = { ...DEFAULT_SETTINGS, ...JSON.parse(storedSettings) };
     } catch (e) {
       console.error(e);
     }
@@ -150,47 +123,26 @@ const allNotes = computed(() =>
     (_x, i) => minNote.value + i
   )
 );
-const getGuessBadness = (guess: Guess, mode: Mode, badGuessTime: number) => {
-  switch (mode) {
-    case "accuracy":
-      return guess.failed ? 1 : 0;
+const optimizeFor = computed<OptimizeFor>(() => {
+  switch (settings.value.optimizeFor) {
     case "speed":
-      return guess.failed ? badGuessTime : guess.duration;
-  }
-};
-const getBadnessDescription = (value: number, mode: Mode) => {
-  switch (mode) {
+      return new OptimizeForSpeed(settings.value.badGuessTime);
     case "accuracy":
-      return (100 - 100 * value).toFixed(0) + "%";
-    case "speed":
-      return value.toFixed(1) + "s";
-  }
-};
-const worstBadness = computed(() => {
-  switch (settings.value.mode) {
-    case "accuracy":
-      return 1;
-    case "speed":
-      return Math.max(
-        ...(stats.value
-          .map((s) => s.badness)
-          .filter((s) => s !== undefined) as number[])
-      );
+      return OptimizeForAccuracy;
+    default:
+      return OptimizeForAccuracy;
   }
 });
-
-const bestBadness = computed(() => {
-  switch (settings.value.mode) {
-    case "accuracy":
-      return 0;
-    case "speed":
-      return Math.min(
-        ...(stats.value
-          .map((s) => s.badness)
-          .filter((s) => s !== undefined) as number[])
-      );
-  }
-});
+const allBadnesses = computed(
+  () =>
+    stats.value.map((s) => s.badness).filter((s) => s !== undefined) as number[]
+);
+const worstBadness = computed(() =>
+  optimizeFor.value.getWorstBadness(allBadnesses.value)
+);
+const bestBadness = computed(() =>
+  optimizeFor.value.getBestBadness(allBadnesses.value)
+);
 
 const stats = computed<Stat[]>(() =>
   allNotes.value
@@ -198,17 +150,15 @@ const stats = computed<Stat[]>(() =>
       const guesses = lastGuesses.value.values.get(note);
       const guessesCount = guesses?.length || 0;
       const label = getNoteFullLabel(note, langNotes.value);
-      const mode = settings.value.mode;
       let badness: number | undefined;
       let description: string | undefined;
       if (guessesCount >= settings.value.minSampleSize) {
         badness =
           guesses!.reduce(
-            (sum, g) =>
-              getGuessBadness(g, mode, settings.value.badGuessTime) + sum,
+            (sum, g) => optimizeFor.value.getGuessBadness(g) + sum,
             0
           ) / guesses!.length;
-        description = getBadnessDescription(badness, mode);
+        description = optimizeFor.value.getBadnessDescription(badness);
       }
       return {
         note,
@@ -414,65 +364,7 @@ window.onkeydown = (e) => {
         />
       </div>
     </div>
-    <aside class="settings">
-      <h2>Settings</h2>
-      <label
-        >Extra bars :
-        <select v-model="settings.extraBars">
-          <option v-for="o in 4" :value="o - 1">
-            {{ o - 1 }}
-          </option>
-        </select>
-      </label>
-      <label
-        >Clef :
-        <select v-model="settings.clef">
-          <option value="treble">Treble</option>
-          <option value="bass">Bass</option>
-        </select>
-      </label>
-      <label
-        >Lang :
-        <select v-model="settings.lang">
-          <option value="fr">French</option>
-          <option value="en">English</option>
-        </select>
-      </label>
-      <div class="radio-block">
-        Optimize for :
-        <div class="radio-container">
-          <div v-for="m in MODES">
-            <input
-              :id="'settings-' + m"
-              :value="m"
-              type="radio"
-              v-model="settings.mode"
-            />
-            <label class="radio-label" :for="'settings-' + m">{{ m }}</label>
-          </div>
-        </div>
-      </div>
-      <label
-        >Good notes scarcity :
-        <input type="number" v-model="settings.goodScarcity"
-      /></label>
-      <label
-        >Bad notes abondance :
-        <input type="number" v-model="settings.badAbondance"
-      /></label>
-      <label
-        >Wrong guess speed score :
-        <input type="number" step="0.1" v-model="settings.badGuessTime"
-      /></label>
-      <label
-        >Sample size for rating :
-        <input type="number" v-model="settings.takeStatsOver"
-      /></label>
-      <label
-        >Min sample size :
-        <input type="number" v-model="settings.minSampleSize"
-      /></label>
-    </aside>
+    <SettingsUI v-model="settings" />
   </div>
   <footer>
     Source code hosted on
@@ -494,23 +386,6 @@ a {
 .note-label {
   display: inline-block;
   width: 2em;
-}
-aside {
-  float: right;
-  label {
-    display: block;
-  }
-  label,
-  .radio-block {
-    padding-bottom: 1rem;
-  }
-  .radio-container {
-    display: inline-block;
-    vertical-align: top;
-  }
-  .radio-label {
-    display: inline;
-  }
 }
 .stat-buttons {
   font-size: 10px;

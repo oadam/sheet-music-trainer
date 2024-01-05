@@ -38,6 +38,6 @@ export class OptimizeForSpeed implements OptimizeFor {
     return Math.max(...badnesses);
   }
   getBestBadness(badnesses: number[]) {
-    return Math.max(...badnesses);
+    return Math.min(...badnesses);
   }
 }

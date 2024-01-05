@@ -146,12 +146,12 @@ const allNotes = computed(() =>
     (_x, i) => minNote.value + i
   )
 );
-const getGuessBadness = (guess: Guess, mode: Mode) => {
+const getGuessBadness = (guess: Guess, mode: Mode, badGuessTime: number) => {
   switch (mode) {
     case "accuracy":
       return guess.failed ? 1 : 0;
     case "speed":
-      return guess.duration;
+      return guess.failed ? badGuessTime : guess.duration;
   }
 };
 const getBadnessDescription = (value: number, mode: Mode) => {
@@ -199,8 +199,11 @@ const stats = computed<Stat[]>(() =>
       let description: string | undefined;
       if (guessesCount >= settings.value.minSampleSize) {
         badness =
-          guesses!.reduce((sum, g) => getGuessBadness(g, mode) + sum, 0) /
-          guesses!.length;
+          guesses!.reduce(
+            (sum, g) =>
+              getGuessBadness(g, mode, settings.value.badGuessTime) + sum,
+            0
+          ) / guesses!.length;
         description = getBadnessDescription(badness, mode);
       }
       return {
@@ -338,9 +341,7 @@ window.onkeydown = (e) => {
         gameNote.value,
         {
           failed: !goodGuess,
-          duration: goodGuess
-            ? (Date.now() - guessStartedTimestamp.value) / 1000
-            : settings.value.badGuessTime,
+          duration: (Date.now() - guessStartedTimestamp.value) / 1000,
         },
         settings.value.takeStatsOver
       );

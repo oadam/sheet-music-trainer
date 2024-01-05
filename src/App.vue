@@ -7,7 +7,9 @@ interface Guess {
   failed: boolean;
   duration: number;
 }
+type Mode = "accuracy" | "speed";
 
+const MODES: Mode[] = ["accuracy", "speed"];
 const getNoteOctave = (note: number) => Math.floor(note / 7);
 const getNoteLabel = (note: number, langNotes: string[]) =>
   langNotes[Math.floor(note % 7)];
@@ -39,12 +41,12 @@ const DEFAULT_SETTINGS = {
   extraBars: 1,
   lang: "fr" as "fr" | "en",
   clef: "treble" as "treble" | "bass",
-  guessTime: 1.5,
-  goodThreshold: 0.8,
-  perfectThreshold: 0.99,
+  badGuessTime: 5,
+  takeStatsOver: 10,
+  minSampleSize: 3,
+  mode: "accuracy" as Mode,
+  badAbondance: 3,
   goodScarcity: 3,
-  perfectScarcity: 10,
-  takeStatsOver: 20,
 };
 
 const settings = ref({ ...DEFAULT_SETTINGS });
@@ -110,10 +112,25 @@ const langNote = computed(() => getNoteLabel(gameNote.value, langNotes.value));
 interface Stat {
   note: number;
   label: string;
-  guessesCount: number;
-  avgDuration: number;
-  percentCorrect: number;
+  badness: number | undefined;
+  description: string | undefined;
 }
+
+type Rating = "bad" | "medium" | "good";
+interface RatedStat extends Stat {
+  rating: Rating | undefined;
+}
+
+const getRatingColor = (rating: Rating) => {
+  switch (rating) {
+    case "bad":
+      return "red";
+    case "medium":
+      return "#ffbd4f";
+    case "good":
+      return "green";
+  }
+};
 const clefMinNote = computed(() =>
   settings.value.clef === "treble" ? 30 : 18
 );
@@ -129,43 +146,129 @@ const allNotes = computed(() =>
     (_x, i) => minNote.value + i
   )
 );
+const getGuessBadness = (guess: Guess, mode: Mode) => {
+  switch (mode) {
+    case "accuracy":
+      return guess.failed ? 1 : 0;
+    case "speed":
+      return guess.duration;
+  }
+};
+const getBadnessDescription = (value: number, mode: Mode) => {
+  switch (mode) {
+    case "accuracy":
+      return (100 - 100 * value).toFixed(0) + "%";
+    case "speed":
+      return value.toFixed(1) + "s";
+  }
+};
+const worstBadness = computed(() => {
+  switch (settings.value.mode) {
+    case "accuracy":
+      return 1;
+    case "speed":
+      return Math.max(
+        ...(stats.value
+          .map((s) => s.badness)
+          .filter((s) => s !== undefined) as number[])
+      );
+  }
+});
+
+const bestBadness = computed(() => {
+  switch (settings.value.mode) {
+    case "accuracy":
+      return 0;
+    case "speed":
+      return Math.min(
+        ...(stats.value
+          .map((s) => s.badness)
+          .filter((s) => s !== undefined) as number[])
+      );
+  }
+});
+
 const stats = computed<Stat[]>(() =>
   allNotes.value
     .map((note) => {
       const guesses = lastGuesses.value.values.get(note);
       const guessesCount = guesses?.length || 0;
       const label = getNoteFullLabel(note, langNotes.value);
-      const stat: Stat = !guesses
-        ? {
-            note,
-            label,
-            guessesCount,
-            avgDuration: settings.value.guessTime,
-            percentCorrect: 0,
-          }
-        : {
-            note,
-            label,
-            guessesCount,
-            avgDuration:
-              guesses.reduce((sum, g) => g.duration + sum, 0) / guesses.length,
-            percentCorrect:
-              guesses.reduce((sum, g) => (g.failed ? 0 : 1) + sum, 0) /
-              guesses.length,
-          };
-      return stat;
+      const mode = settings.value.mode;
+      let badness: number | undefined;
+      let description: string | undefined;
+      if (guessesCount >= settings.value.minSampleSize) {
+        badness =
+          guesses!.reduce((sum, g) => getGuessBadness(g, mode) + sum, 0) /
+          guesses!.length;
+        description = getBadnessDescription(badness, mode);
+      }
+      return {
+        note,
+        label,
+        guessesCount,
+        badness,
+        description,
+      };
     })
     .reverse()
 );
 
+const thresholds = computed<{
+  good: number | undefined;
+  bad: number | undefined;
+}>(() => {
+  const scores = stats.value
+    .map((s) => s.badness)
+    .filter((s) => s !== undefined) as number[];
+  if (scores.length <= 3) {
+    return { good: undefined, bad: undefined };
+  }
+  scores.sort();
+  const median = scores[Math.floor(scores.length / 2)];
+  const good = scores
+    .slice(0, scores.length / 3)
+    .reverse()
+    .find((s) => s != median);
+  if (good === undefined) {
+    // nobody is better than median, hence we'll subdivide in good and medium (no bads)
+    return {
+      good: median,
+      bad: undefined,
+    };
+  } else {
+    return {
+      good,
+      bad: scores.slice((scores.length * 2) / 3).find((s) => s != median),
+    };
+  }
+});
+const ratedStats = computed<RatedStat[]>(() => {
+  return stats.value.map((s) => {
+    let rating: Rating | undefined;
+    if (s.badness === undefined) {
+      rating = undefined;
+    } else if (
+      thresholds.value.bad !== undefined &&
+      s.badness >= thresholds.value.bad
+    ) {
+      rating = "bad";
+    } else if (
+      thresholds.value.good !== undefined &&
+      s.badness <= thresholds.value.good
+    ) {
+      rating = "good";
+    } else {
+      rating = "medium";
+    }
+    return { rating: rating, ...s };
+  });
+});
+
 const noteKeytouch = computed(() => langNote.value[0].toLowerCase());
 const state = ref<"paused" | "started" | "error">("paused");
-const guessTimeoutStarted = ref(0);
-let guessTimeout: number | undefined = undefined;
+const guessStartedTimestamp = ref(0);
 watch(state, (s) => {
-  if (s != "started") {
-    clearTimeout(guessTimeout);
-  }
   if (s == "started") {
     start();
   }
@@ -175,8 +278,8 @@ const nonHiddenNotes = computed<number[]>(() =>
   allNotes.value.filter((n) => !hiddenNotes.value.has(n))
 );
 const chooseNextNote = () => {
-  let statsMap = new Map<number, Stat>();
-  for (const s of stats.value) {
+  let statsMap = new Map<number, RatedStat>();
+  for (const s of ratedStats.value) {
     statsMap.set(s.note, s);
   }
   let totalProb = 0;
@@ -187,12 +290,12 @@ const chooseNextNote = () => {
     }
     const stats = statsMap.get(n);
     let prob: number;
-    if (!stats || stats.guessesCount < 5) {
+    if (!stats || stats.rating === undefined) {
       prob = 1;
-    } else if (stats.percentCorrect > settings.value.perfectThreshold) {
-      prob = 1 / settings.value.perfectScarcity;
-    } else if (stats.percentCorrect > settings.value.goodThreshold) {
+    } else if (stats.rating === "good") {
       prob = 1 / settings.value.goodScarcity;
+    } else if (stats.rating === "bad") {
+      prob = settings.value.badAbondance;
     } else {
       prob = 1;
     }
@@ -210,19 +313,7 @@ const chooseNextNote = () => {
 const start = () => {
   state.value = "started";
   gameNote.value = chooseNextNote();
-  clearTimeout(guessTimeout);
-  guessTimeoutStarted.value = Date.now();
-  guessTimeout = setTimeout(() => {
-    state.value = "error";
-    lastGuesses.value.add(
-      gameNote.value,
-      {
-        failed: true,
-        duration: settings.value.guessTime,
-      },
-      settings.value.takeStatsOver
-    );
-  }, settings.value.guessTime * 1000);
+  guessStartedTimestamp.value = Date.now();
 };
 
 window.onkeydown = (e) => {
@@ -248,8 +339,8 @@ window.onkeydown = (e) => {
         {
           failed: !goodGuess,
           duration: goodGuess
-            ? (Date.now() - guessTimeoutStarted.value) / 1000
-            : settings.value.guessTime,
+            ? (Date.now() - guessStartedTimestamp.value) / 1000
+            : settings.value.badGuessTime,
         },
         settings.value.takeStatsOver
       );
@@ -290,8 +381,8 @@ window.onkeydown = (e) => {
         </div>
       </h2>
       <div
-        v-for="stat in stats"
-        :key="stat.note"
+        v-for="stat in ratedStats"
+        :key="'stat-' + stat.note"
         class="stat"
         :class="{ hidden: hiddenNotes.has(stat.note) }"
         @click="toggleNote(stat.note)"
@@ -299,13 +390,20 @@ window.onkeydown = (e) => {
         @mouseleave="hoveredNote = null"
       >
         <input type="checkbox" :checked="!hiddenNotes.has(stat.note)" />
-        {{ stat.label }}
-        <meter
-          :low="settings.goodThreshold"
-          :high="settings.perfectThreshold"
-          optimum="1"
-          :value="stat.percentCorrect"
-        ></meter>
+        <span class="note-label">
+          {{ stat.label }}
+        </span>
+        <div
+          class="meter"
+          :min="-worstBadness"
+          :value="-stat.badness!"
+          :title="stat.description"
+        >
+          <span
+            v-if="stat.rating !== undefined"
+            :style="{background: getRatingColor(stat.rating), width: Math.max(0.05, ((worstBadness - stat.badness!) / (worstBadness - bestBadness)))*100+'%'}"
+          ></span>
+        </div>
       </div>
     </div>
     <aside class="settings">
@@ -332,39 +430,39 @@ window.onkeydown = (e) => {
           <option value="en">English</option>
         </select>
       </label>
-      <label
-        >Guess time in seconds :
-        <input type="number" min="0.1" step="0.1" v-model="settings.guessTime"
-      /></label>
-      <label
-        >good average score threshold :
-        <input
-          type="number"
-          min="0"
-          max="1"
-          v-model="settings.goodThreshold"
-          step="0.01"
-      /></label>
-      <label
-        >perfect average score threshold :
-        <input
-          type="number"
-          :min="settings.goodThreshold"
-          max="1"
-          v-model="settings.perfectThreshold"
-          step="0.01"
-      /></label>
+      <div class="radio-block">
+        Optimize for :
+        <div class="radio-container">
+          <div v-for="m in MODES">
+            <input
+              :id="'settings-' + m"
+              :value="m"
+              type="radio"
+              v-model="settings.mode"
+            />
+            <label class="radio-label" :for="'settings-' + m">{{ m }}</label>
+          </div>
+        </div>
+      </div>
       <label
         >Good notes scarcity :
         <input type="number" v-model="settings.goodScarcity"
       /></label>
       <label
-        >Perfect notes scarcity :
-        <input type="number" v-model="settings.perfectScarcity"
+        >Bad notes abondance :
+        <input type="number" v-model="settings.badAbondance"
+      /></label>
+      <label
+        >Wrong guess speed score :
+        <input type="number" step="0.1" v-model="settings.badGuessTime"
       /></label>
       <label
         >Sample size for rating :
         <input type="number" v-model="settings.takeStatsOver"
+      /></label>
+      <label
+        >Min sample size :
+        <input type="number" v-model="settings.minSampleSize"
       /></label>
     </aside>
   </div>
@@ -385,11 +483,40 @@ a {
   display: flex;
   gap: 2rem;
 }
+.meter {
+  display: inline-block;
+  vertical-align: middle;
+  width: 5em;
+  height: 14px;
+  box-sizing: border-box;
+  border-radius: 1em;
+  overflow: hidden;
+  border: solid 1px #999;
+  span {
+    display: inline-block;
+    height: 100%;
+    vertical-align: top;
+  }
+}
+.note-label {
+  display: inline-block;
+  width: 2em;
+}
 aside {
   float: right;
   label {
     display: block;
+  }
+  label,
+  .radio-block {
     padding-bottom: 1rem;
+  }
+  .radio-container {
+    display: inline-block;
+    vertical-align: top;
+  }
+  .radio-label {
+    display: inline;
   }
 }
 .stat-buttons {
@@ -402,6 +529,7 @@ aside {
 }
 .stat {
   cursor: pointer;
+  white-space: nowrap;
 }
 .stat.hidden {
   opacity: 0.6;

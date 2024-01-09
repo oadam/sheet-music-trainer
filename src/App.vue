@@ -178,12 +178,12 @@ const scores = computed(
       .sort() as number[]
 );
 
-const median = computed<number | undefined>(() => {
+const average = computed<number | undefined>(() => {
   const s = scores.value;
   if (s.length == 0) {
     return undefined;
   }
-  return s[Math.floor((s.length * 2) / 4)];
+  return s.reduce((s, v) => s + v, 0) / s.length;
 });
 
 const thresholds = computed<{
@@ -191,20 +191,24 @@ const thresholds = computed<{
   bad: number | undefined;
 }>(() => {
   const s = scores.value;
+  if (s.length <= 3) {
+    return { good: undefined, bad: undefined };
+  }
+  const median = s[s.length / 2];
   const good = s
     .slice(0, s.length / 3)
     .reverse()
-    .find((s) => s != median.value);
+    .find((s) => s != median);
   if (good === undefined) {
     // nobody is better than median, hence we'll subdivide in good and medium (no bads)
     return {
-      good: median.value,
+      good: median,
       bad: undefined,
     };
   } else {
     return {
       good,
-      bad: s.slice((s.length * 2) / 3).find((s) => s != median.value),
+      bad: s.slice((s.length * 2) / 3).find((s) => s != median),
     };
   }
 });
@@ -352,8 +356,8 @@ window.onkeydown = (e) => {
           <a @click="uncheckAll">uncheck all</a>
         </div>
       </h2>
-      <div class="median" v-if="median">
-        Median : {{ optimizeFor.getBadnessDescription(median) }}
+      <div class="average" v-if="average">
+        Average : {{ optimizeFor.getBadnessDescription(average) }}
       </div>
       <div
         v-for="stat in ratedStats"
@@ -407,7 +411,7 @@ a {
     display: block;
   }
 }
-.median {
+.average {
   font-weight: bold;
   margin-bottom: 1em;
   font-size: 14px;

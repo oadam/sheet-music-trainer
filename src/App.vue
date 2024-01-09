@@ -170,36 +170,45 @@ const stats = computed<Stat[]>(() =>
     })
     .reverse()
 );
+const scores = computed(
+  () =>
+    stats.value
+      .map((s) => s.badness)
+      .filter((s) => s !== undefined)
+      .sort() as number[]
+);
+
+const median = computed<number | undefined>(() => {
+  const s = scores.value;
+  if (s.length == 0) {
+    return undefined;
+  }
+  return s[Math.floor((s.length * 2) / 4)];
+});
 
 const thresholds = computed<{
   good: number | undefined;
   bad: number | undefined;
 }>(() => {
-  const scores = stats.value
-    .map((s) => s.badness)
-    .filter((s) => s !== undefined) as number[];
-  if (scores.length <= 3) {
-    return { good: undefined, bad: undefined };
-  }
-  scores.sort();
-  const median = scores[Math.floor(scores.length / 2)];
-  const good = scores
-    .slice(0, scores.length / 3)
+  const s = scores.value;
+  const good = s
+    .slice(0, s.length / 3)
     .reverse()
-    .find((s) => s != median);
+    .find((s) => s != median.value);
   if (good === undefined) {
     // nobody is better than median, hence we'll subdivide in good and medium (no bads)
     return {
-      good: median,
+      good: median.value,
       bad: undefined,
     };
   } else {
     return {
       good,
-      bad: scores.slice((scores.length * 2) / 3).find((s) => s != median),
+      bad: s.slice((s.length * 2) / 3).find((s) => s != median.value),
     };
   }
 });
+
 const ratedStats = computed<RatedStat[]>(() => {
   return stats.value.map((s) => {
     let rating: Rating | undefined;
@@ -343,6 +352,9 @@ window.onkeydown = (e) => {
           <a @click="uncheckAll">uncheck all</a>
         </div>
       </h2>
+      <div class="median" v-if="median">
+        Median : {{ optimizeFor.getBadnessDescription(median) }}
+      </div>
       <div
         v-for="stat in ratedStats"
         :key="'stat-' + stat.note"
@@ -394,6 +406,11 @@ a {
   a {
     display: block;
   }
+}
+.median {
+  font-weight: bold;
+  margin-bottom: 1em;
+  font-size: 14px;
 }
 .stat {
   cursor: pointer;

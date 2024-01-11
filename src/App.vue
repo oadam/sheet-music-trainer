@@ -356,7 +356,7 @@ window.onkeydown = (e) => {
           <a @click="uncheckAll">uncheck all</a>
         </div>
       </h2>
-      <div class="average" v-if="average">
+      <div class="average" v-if="average !== undefined">
         Average : {{ optimizeFor.getBadnessDescription(average) }}
       </div>
       <div

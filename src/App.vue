@@ -84,14 +84,14 @@ const vecflowNote = computed(() => {
 });
 const langNote = computed(() => getNoteLabel(gameNote.value, langNotes.value));
 interface Stat {
-  note: number;
-  label: string;
   badness: number | undefined;
   description: string | undefined;
 }
 
 type Rating = "bad" | "medium" | "good";
-interface RatedStat extends Stat {
+interface DisplayNote extends Stat {
+  note: number;
+  label: string;
   rating: Rating | undefined;
   percentValue: number | undefined;
 }
@@ -135,7 +135,7 @@ const optimizeFor = computed<OptimizeFor>(() => {
 });
 const allBadnesses = computed(
   () =>
-    stats.value.map((s) => s.badness).filter((s) => s !== undefined) as number[]
+    stats.value.values().map((s) => s.badness).filter((s) => s !== undefined) as number[]
 );
 const worstBadness = computed(() =>
   optimizeFor.value.getWorstBadness(allBadnesses.value)
@@ -144,12 +144,12 @@ const bestBadness = computed(() =>
   optimizeFor.value.getBestBadness(allBadnesses.value)
 );
 
-const stats = computed<Stat[]>(() =>
+const stats = computed<Map<number, Stat>>(() =>
+  const result = new Map<number, Stat>();
   nonHiddenNotes.value
-    .map((note) => {
+    .foreach((note) => {
       const guesses = lastGuesses.value.values.get(note);
       const guessesCount = guesses?.length || 0;
-      const label = getNoteFullLabel(note, langNotes.value);
       let badness: number | undefined;
       let description: string | undefined;
       if (guessesCount >= settings.value.minSampleSize) {
@@ -160,19 +160,16 @@ const stats = computed<Stat[]>(() =>
           ) / guesses!.length;
         description = optimizeFor.value.getBadnessDescription(badness);
       }
-      return {
-        note,
-        label,
-        guessesCount,
+      result.set(note, {
         badness,
         description,
-      };
-    })
-    .reverse()
+      });
+    });
+    return result;
 );
 const scores = computed(
   () =>
-    stats.value
+    stats.value.values()
       .map((s) => s.badness)
       .filter((s) => s !== undefined)
       .sort() as number[]
@@ -213,8 +210,13 @@ const thresholds = computed<{
   }
 });
 
-const ratedStats = computed<RatedStat[]>(() => {
-  return stats.value.map((s) => {
+const displayNotes = computed<DisplayNote[]>(() => {
+  return allNotes.value.map((note) => {
+    const label = getNoteFullLabel(note, langNotes.value);
+    const s = stats.value.get(note) || {
+      badness: undefined,
+      description: undefined,
+    };
     let rating: Rating | undefined;
     let percentValue: number | undefined;
     if (s.badness !== undefined) {
@@ -236,11 +238,13 @@ const ratedStats = computed<RatedStat[]>(() => {
       }
     }
     return {
+      ...s,
+      note,
+      label,
       rating,
       percentValue,
-      ...s,
     };
-  });
+  }).reverse();
 });
 
 const noteKeytouch = computed(() => langNote.value[0].toLowerCase());
@@ -256,23 +260,19 @@ const nonHiddenNotes = computed<number[]>(() =>
   allNotes.value.filter((n) => !hiddenNotes.value.has(n))
 );
 const chooseNextNote = () => {
-  let statsMap = new Map<number, RatedStat>();
-  for (const s of ratedStats.value) {
-    statsMap.set(s.note, s);
-  }
   let totalProb = 0;
   let candidates: { totalProbAfter: number; note: number }[] = [];
   for (const n of nonHiddenNotes.value) {
     if (n == gameNote.value) {
       continue;
     }
-    const stats = statsMap.get(n);
+    const s = stats.value.get(n);
     let prob: number;
-    if (!stats || stats.rating === undefined) {
+    if (!s || s.rating === undefined) {
       prob = 1;
-    } else if (stats.rating === "good") {
+    } else if (s.rating === "good") {
       prob = 1 / settings.value.goodScarcity;
-    } else if (stats.rating === "bad") {
+    } else if (s.rating === "bad") {
       prob = settings.value.badAbondance;
     } else {
       prob = 1;
@@ -360,7 +360,7 @@ window.onkeydown = (e) => {
         Average : {{ optimizeFor.getBadnessDescription(average) }}
       </div>
       <div
-        v-for="stat in ratedStats"
+        v-for="stat in displayNotes"
         :key="'stat-' + stat.note"
         class="stat"
         :class="{ hidden: hiddenNotes.has(stat.note) }"

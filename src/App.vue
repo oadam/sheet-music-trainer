@@ -61,7 +61,8 @@ onMounted(() => {
 });
 const encodeClefNote = (note: number) => settings.value.clef + "-" + note;
 const reset = () => lastGuesses.value.clear();
-const checkAll = () => hiddenNotes.value.clear();
+const checkAll = () =>
+  allNotes.value.forEach((n) => hiddenNotes.value.delete(encodeClefNote(n)));
 const uncheckAll = () =>
   allNotes.value.forEach((n) => hiddenNotes.value.add(encodeClefNote(n)));
 const toggleNote = (n: number) => {

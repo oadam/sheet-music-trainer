@@ -145,7 +145,7 @@ const bestBadness = computed(() =>
 );
 
 const stats = computed<Stat[]>(() =>
-  allNotes.value
+  nonHiddenNotes.value
     .map((note) => {
       const guesses = lastGuesses.value.values.get(note);
       const guessesCount = guesses?.length || 0;

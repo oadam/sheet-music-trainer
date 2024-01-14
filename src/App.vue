@@ -135,7 +135,7 @@ const optimizeFor = computed<OptimizeFor>(() => {
 });
 const allBadnesses = computed(
   () =>
-    stats.value.values().map((s) => s.badness).filter((s) => s !== undefined) as number[]
+    Array.from(stats.value.values(), (s) => s.badness).filter((s) => s !== undefined) as number[]
 );
 const worstBadness = computed(() =>
   optimizeFor.value.getWorstBadness(allBadnesses.value)
@@ -144,10 +144,10 @@ const bestBadness = computed(() =>
   optimizeFor.value.getBestBadness(allBadnesses.value)
 );
 
-const stats = computed<Map<number, Stat>>(() =>
+const stats = computed<Map<number, Stat>>(() => {
   const result = new Map<number, Stat>();
   nonHiddenNotes.value
-    .foreach((note) => {
+    .forEach((note) => {
       const guesses = lastGuesses.value.values.get(note);
       const guessesCount = guesses?.length || 0;
       let badness: number | undefined;
@@ -166,11 +166,11 @@ const stats = computed<Map<number, Stat>>(() =>
       });
     });
     return result;
-);
+});
+
 const scores = computed(
   () =>
-    stats.value.values()
-      .map((s) => s.badness)
+    Array.from(stats.value.values(), (s) => s.badness)
       .filter((s) => s !== undefined)
       .sort() as number[]
 );
@@ -262,11 +262,15 @@ const nonHiddenNotes = computed<number[]>(() =>
 const chooseNextNote = () => {
   let totalProb = 0;
   let candidates: { totalProbAfter: number; note: number }[] = [];
+  const statMap = new Map<number, DisplayNote>();
+  for (const d of displayNotes.value) {
+    statMap.set(d.note, d);
+  }
   for (const n of nonHiddenNotes.value) {
     if (n == gameNote.value) {
       continue;
     }
-    const s = stats.value.get(n);
+    const s = statMap.get(n);
     let prob: number;
     if (!s || s.rating === undefined) {
       prob = 1;

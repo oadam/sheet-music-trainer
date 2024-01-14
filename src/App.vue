@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import Vecflow from "./components/Vecflow.vue";
-import Meter from "./components/Meter.vue";
+import Note, { DisplayNote, Rating } from "./components/Note.vue";
 import SettingsUI from "./components/SettingsUI.vue";
 import { computed, onMounted, ref, watch } from "vue";
 import EvictingMultiMap from "./types/EvictingMultiMap";
@@ -19,7 +19,7 @@ const getNoteFullLabel = (note: number, langNotes: string[]) =>
   langNotes[Math.floor(note % 7)] +
   String.fromCharCode("₀".charCodeAt(0) + getNoteOctave(note));
 
-const lastGuesses = ref(new EvictingMultiMap<number, Guess>());
+const lastGuesses = ref(new EvictingMultiMap<string, Guess>());
 const settings = useSettings();
 
 watch(
@@ -41,7 +41,7 @@ onMounted(() => {
     }
   }
 });
-const hiddenNotes = ref(new Set<number>());
+const hiddenNotes = ref(new Set<string>());
 watch(
   hiddenNotes,
   (s) => {
@@ -59,14 +59,16 @@ onMounted(() => {
     }
   }
 });
+const encodeClefNote = (note: number) => settings.value.clef + "-" + note;
 const reset = () => lastGuesses.value.clear();
 const checkAll = () => hiddenNotes.value.clear();
 const uncheckAll = () =>
-  allNotes.value.forEach((n) => hiddenNotes.value.add(n));
-const toggleNote = (note: number) =>
-  hiddenNotes.value.has(note)
-    ? hiddenNotes.value.delete(note)
-    : hiddenNotes.value.add(note);
+  allNotes.value.forEach((n) => hiddenNotes.value.add(encodeClefNote(n)));
+const toggleNote = (n: number) => {
+  hiddenNotes.value.has(encodeClefNote(n))
+    ? hiddenNotes.value.delete(encodeClefNote(n))
+    : hiddenNotes.value.add(encodeClefNote(n));
+};
 const gameNote = ref(23);
 const hoveredNote = ref(null as number | null);
 const ENGLISH_NOTES = ["C", "D", "E", "F", "G", "A", "B"];
@@ -83,31 +85,7 @@ const vecflowNote = computed(() => {
   }
 });
 const langNote = computed(() => getNoteLabel(gameNote.value, langNotes.value));
-interface Stat {
-  badness: number | undefined;
-  description: string | undefined;
-}
 
-type Rating = "bad" | "medium" | "good";
-interface DisplayNote extends Stat {
-  note: number;
-  label: string;
-  rating: Rating | undefined;
-  percentValue: number | undefined;
-}
-
-const getRatingColor = (rating: Rating | undefined) => {
-  switch (rating) {
-    case "bad":
-      return "red";
-    case undefined:
-      return "pink";
-    case "medium":
-      return "#ffbd4f";
-    case "good":
-      return "green";
-  }
-};
 const clefMinNote = computed(() =>
   settings.value.clef === "treble" ? 30 : 18
 );
@@ -133,44 +111,33 @@ const optimizeFor = computed<OptimizeFor>(() => {
       return OptimizeForAccuracy;
   }
 });
-const allBadnesses = computed(
-  () =>
-    Array.from(stats.value.values(), (s) => s.badness).filter((s) => s !== undefined) as number[]
-);
 const worstBadness = computed(() =>
-  optimizeFor.value.getWorstBadness(allBadnesses.value)
+  optimizeFor.value.getWorstBadness(badnesses.value.values())
 );
 const bestBadness = computed(() =>
-  optimizeFor.value.getBestBadness(allBadnesses.value)
+  optimizeFor.value.getBestBadness(badnesses.value.values())
 );
 
-const stats = computed<Map<number, Stat>>(() => {
-  const result = new Map<number, Stat>();
-  nonHiddenNotes.value
-    .forEach((note) => {
-      const guesses = lastGuesses.value.values.get(note);
-      const guessesCount = guesses?.length || 0;
-      let badness: number | undefined;
-      let description: string | undefined;
-      if (guessesCount >= settings.value.minSampleSize) {
-        badness =
-          guesses!.reduce(
-            (sum, g) => optimizeFor.value.getGuessBadness(g) + sum,
-            0
-          ) / guesses!.length;
-        description = optimizeFor.value.getBadnessDescription(badness);
-      }
-      result.set(note, {
-        badness,
-        description,
-      });
-    });
-    return result;
+const badnesses = computed<Map<number, number>>(() => {
+  const result = new Map<number, number>();
+  nonHiddenNotes.value.forEach((note) => {
+    const guesses = lastGuesses.value.values.get(encodeClefNote(note));
+    const guessesCount = guesses?.length || 0;
+    if (guessesCount >= settings.value.minSampleSize) {
+      const badness =
+        guesses!.reduce(
+          (sum, g) => optimizeFor.value.getGuessBadness(g) + sum,
+          0
+        ) / guesses!.length;
+      result.set(note, badness);
+    }
+  });
+  return result;
 });
 
 const scores = computed(
   () =>
-    Array.from(stats.value.values(), (s) => s.badness)
+    Array.from(badnesses.value.values())
       .filter((s) => s !== undefined)
       .sort() as number[]
 );
@@ -211,40 +178,42 @@ const thresholds = computed<{
 });
 
 const displayNotes = computed<DisplayNote[]>(() => {
-  return allNotes.value.map((note) => {
-    const label = getNoteFullLabel(note, langNotes.value);
-    const s = stats.value.get(note) || {
-      badness: undefined,
-      description: undefined,
-    };
-    let rating: Rating | undefined;
-    let percentValue: number | undefined;
-    if (s.badness !== undefined) {
-      percentValue =
-        (100 * (worstBadness.value - s.badness!)) /
-        (worstBadness.value - bestBadness.value);
-      if (
-        thresholds.value.bad !== undefined &&
-        s.badness >= thresholds.value.bad
-      ) {
-        rating = "bad";
-      } else if (
-        thresholds.value.good !== undefined &&
-        s.badness <= thresholds.value.good
-      ) {
-        rating = "good";
-      } else {
-        rating = "medium";
+  return allNotes.value
+    .map((note) => {
+      const label = getNoteFullLabel(note, langNotes.value);
+      const badness = badnesses.value.get(note);
+      let rating: Rating | undefined;
+      let percentValue: number | undefined;
+      let badnessDescription: string | undefined;
+      if (badness !== undefined) {
+        badnessDescription = optimizeFor.value.getBadnessDescription(badness);
+        percentValue =
+          (100 * (worstBadness.value - badness!)) /
+          (worstBadness.value - bestBadness.value);
+        if (
+          thresholds.value.bad !== undefined &&
+          badness >= thresholds.value.bad
+        ) {
+          rating = "bad";
+        } else if (
+          thresholds.value.good !== undefined &&
+          badness <= thresholds.value.good
+        ) {
+          rating = "good";
+        } else {
+          rating = "medium";
+        }
       }
-    }
-    return {
-      ...s,
-      note,
-      label,
-      rating,
-      percentValue,
-    };
-  }).reverse();
+      return {
+        note,
+        hidden: hiddenNotes.value.has(encodeClefNote(note)),
+        label,
+        rating,
+        percentValue,
+        badnessDescription,
+      };
+    })
+    .reverse();
 });
 
 const noteKeytouch = computed(() => langNote.value[0].toLowerCase());
@@ -257,7 +226,7 @@ watch(state, (s) => {
 });
 
 const nonHiddenNotes = computed<number[]>(() =>
-  allNotes.value.filter((n) => !hiddenNotes.value.has(n))
+  allNotes.value.filter((n) => !hiddenNotes.value.has(encodeClefNote(n)))
 );
 const chooseNextNote = () => {
   let totalProb = 0;
@@ -317,7 +286,7 @@ window.onkeydown = (e) => {
       break;
     case "started":
       lastGuesses.value.add(
-        gameNote.value,
+        encodeClefNote(gameNote.value),
         {
           failed: !goodGuess,
           duration: (Date.now() - guessStartedTimestamp.value) / 1000,
@@ -363,26 +332,15 @@ window.onkeydown = (e) => {
       <div class="average" v-if="average !== undefined">
         Average : {{ optimizeFor.getBadnessDescription(average) }}
       </div>
-      <div
-        v-for="stat in displayNotes"
-        :key="'stat-' + stat.note"
-        class="stat"
-        :class="{ hidden: hiddenNotes.has(stat.note) }"
-        @click="toggleNote(stat.note)"
-        @mouseenter="hoveredNote = stat.note"
+      <Note
+        v-for="note in displayNotes"
+        :key="'displayed-note-' + note.note"
+        :note="note"
+        :class="{ hidden: note.hidden }"
+        @click="toggleNote(note.note)"
+        @mouseenter="hoveredNote = note.note"
         @mouseleave="hoveredNote = null"
-      >
-        <input type="checkbox" :checked="!hiddenNotes.has(stat.note)" />
-        <span class="note-label">
-          {{ stat.label }}
-        </span>
-
-        <Meter
-          :percentValue="stat.percentValue"
-          :title="stat.description"
-          :color="getRatingColor(stat.rating)"
-        />
-      </div>
+      />
     </div>
     <SettingsUI v-model="settings" />
   </div>
@@ -403,10 +361,6 @@ a {
   display: flex;
   gap: 2rem;
 }
-.note-label {
-  display: inline-block;
-  width: 2em;
-}
 .stat-buttons {
   font-size: 10px;
   display: inline-block;
@@ -419,13 +373,6 @@ a {
   font-weight: bold;
   margin-bottom: 1em;
   font-size: 14px;
-}
-.stat {
-  cursor: pointer;
-  white-space: nowrap;
-}
-.stat.hidden {
-  opacity: 0.6;
 }
 .main {
   width: 300px;

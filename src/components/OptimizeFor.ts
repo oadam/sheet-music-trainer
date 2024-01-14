@@ -6,8 +6,8 @@ export interface Guess {
 export interface OptimizeFor {
   getGuessBadness(guess: Guess): number;
   getBadnessDescription(value: number): string;
-  getWorstBadness(badnesses: number[]): number;
-  getBestBadness(badnesses: number[]): number;
+  getWorstBadness(badnesses: Iterable<number>): number;
+  getBestBadness(badnesses: Iterable<number>): number;
 }
 
 export const OptimizeForAccuracy: OptimizeFor = {
@@ -17,10 +17,10 @@ export const OptimizeForAccuracy: OptimizeFor = {
   getBadnessDescription(value: number) {
     return (100 - 100 * value).toFixed(0) + "%";
   },
-  getWorstBadness(_badnesses: number[]) {
+  getWorstBadness(_badnesses: Iterable<number>) {
     return 1;
   },
-  getBestBadness(_badnesses: number[]) {
+  getBestBadness(_badnesses: Iterable<number>) {
     return 0;
   },
 };
@@ -34,10 +34,10 @@ export class OptimizeForSpeed implements OptimizeFor {
   getBadnessDescription(value: number) {
     return value.toFixed(2) + "s";
   }
-  getWorstBadness(badnesses: number[]) {
+  getWorstBadness(badnesses: Iterable<number>) {
     return Math.max(...badnesses);
   }
-  getBestBadness(badnesses: number[]) {
+  getBestBadness(badnesses: Iterable<number>) {
     return Math.min(...badnesses);
   }
 }

@@ -208,15 +208,15 @@ const displayNotes = computed<DisplayNote[]>(() => {
           (100 * (worstBadness.value - badness!)) /
           (worstBadness.value - bestBadness.value);
         if (
-          thresholds.value.bad !== undefined &&
-          badness >= thresholds.value.bad
-        ) {
-          rating = "bad";
-        } else if (
           thresholds.value.good !== undefined &&
           badness <= thresholds.value.good
         ) {
           rating = "good";
+        } else if (
+          thresholds.value.bad !== undefined &&
+          badness >= thresholds.value.bad
+        ) {
+          rating = "bad";
         } else {
           rating = "medium";
         }

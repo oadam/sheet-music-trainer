@@ -5,7 +5,7 @@ export const OPTIMIZE_FOR_IDS = ["accuracy", "speed"];
 const DEFAULT_SETTINGS = {
   extraBars: 1,
   lang: "fr" as "fr" | "en",
-  clef: "treble" as "treble" | "bass",
+  clef: "treble" as "treble" | "bass" | "both",
   badGuessTime: 5,
   takeStatsOver: 10,
   minSampleSize: 3,

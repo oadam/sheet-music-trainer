@@ -15,13 +15,20 @@ const value = defineModel<Settings>({ required: true });
         </option>
       </select>
     </label>
-    <label
-      >Clef :
-      <select v-model="value.clef">
-        <option value="treble">Treble</option>
-        <option value="bass">Bass</option>
-      </select>
-    </label>
+    <div class="radio-block">
+      Clef :
+      <div class="radio-container">
+        <div v-for="m in ['treble', 'bass', 'both']">
+          <input
+            :id="'settings-clef-' + m"
+            :value="m"
+            type="radio"
+            v-model="value.clef"
+          />
+          <label class="radio-label" :for="'settings-clef-' + m">{{ m }}</label>
+        </div>
+      </div>
+    </div>
     <label
       >Lang :
       <select v-model="value.lang">

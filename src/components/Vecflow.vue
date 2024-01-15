@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, watch } from "vue";
+import { ref, onMounted, watch, nextTick } from "vue";
 import { Vex } from "vexflow";
 
 const props = defineProps<{
@@ -7,14 +7,16 @@ const props = defineProps<{
   note: string | null;
 }>();
 
+const id = ref("");
+
 const onNote = () => {
-  const div = document.getElementById("vecflowDiv");
+  const div = document.getElementById(id.value);
   if (!div) {
     return;
   }
   div.innerHTML = "";
   const vf = new Vex.Flow.Factory({
-    renderer: { width: 300, height: 300, elementId: "vecflowDiv" },
+    renderer: { width: 300, height: 220, elementId: id.value },
   });
   vf.getContext().scale(2, 2);
   const score = vf.EasyScore();
@@ -35,17 +37,15 @@ const onNote = () => {
   vf.draw();
 };
 
-onMounted(() => onNote());
+onMounted(async () => {
+  id.value = crypto.randomUUID();
+  await nextTick();
+  onNote();
+});
 watch(() => props.note, onNote);
 watch(() => props.clef, onNote);
 </script>
 
 <template>
-  <div id="vecflowDiv"></div>
+  <div :id="id"></div>
 </template>
-
-<style scoped>
-#vecflowDiv {
-  background: white;
-}
-</style>

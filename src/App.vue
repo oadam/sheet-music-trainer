@@ -11,6 +11,7 @@ import {
   OptimizeForSpeed,
 } from "./types/OptimizeFor";
 import { useSettings } from "./types/Settings";
+import { Clef, BASS, TREBLE, BOTH } from "./types/Clef";
 
 const getNoteOctave = (note: number) => Math.floor(note / 7);
 const getNoteLabel = (note: number, langNotes: string[]) =>
@@ -59,7 +60,19 @@ onMounted(() => {
     }
   }
 });
-const encodeClefNote = (note: number) => settings.value.clef + "-" + note;
+const clef = computed<Clef>(() => {
+  switch (settings.value.clef) {
+    case "treble":
+      return TREBLE;
+    case "bass":
+      return BASS;
+    case "both":
+      return BOTH;
+    default:
+      return TREBLE;
+  }
+});
+const encodeClefNote = (note: number) => clef.value.encodeNote(note);
 const reset = () => lastGuesses.value.clear();
 const checkAll = () =>
   allNotes.value.forEach((n) => hiddenNotes.value.delete(encodeClefNote(n)));
@@ -77,25 +90,28 @@ const FRENCH_NOTES = ["Do", "Ré", "Mi", "Fa", "Sol", "La", "Si", "Do"];
 const langNotes = computed(() =>
   settings.value.lang == "fr" ? FRENCH_NOTES : ENGLISH_NOTES
 );
-const vecflowNote = computed(() => {
-  const note = state.value == "paused" ? hoveredNote.value : gameNote.value;
-  if (note === null) {
-    return null;
-  } else {
-    return getNoteLabel(note, ENGLISH_NOTES) + getNoteOctave(note);
+const vecflowNote = computed<{ first: string | null; second: string | null }>(
+  () => {
+    const note = state.value == "paused" ? hoveredNote.value : gameNote.value;
+    if (note === null) {
+      return { first: null, second: null };
+    }
+    const position = clef.value.getNotePosition(note);
+    const vecflowName = getNoteLabel(note, ENGLISH_NOTES) + getNoteOctave(note);
+    switch (position) {
+      case "first":
+        return { first: vecflowName, second: null };
+      case "second":
+        return { first: null, second: vecflowName };
+      default:
+        throw new Error("unsupported position");
+    }
   }
-});
+);
 const langNote = computed(() => getNoteLabel(gameNote.value, langNotes.value));
 
-const clefMinNote = computed(() =>
-  settings.value.clef === "treble" ? 30 : 18
-);
-const minNote = computed(
-  () => clefMinNote.value - 2 * settings.value.extraBars
-);
-const maxNote = computed(
-  () => clefMinNote.value + 8 + 2 * settings.value.extraBars
-);
+const minNote = computed(() => clef.value.getMinNote(settings.value.extraBars));
+const maxNote = computed(() => clef.value.getMaxNote(settings.value.extraBars));
 const allNotes = computed(() =>
   Array.from(
     { length: maxNote.value - minNote.value + 1 },
@@ -316,7 +332,15 @@ window.onkeydown = (e) => {
       <h2>Game</h2>
       <div v-if="state == 'paused'">Game is paused. Press "s" to start</div>
       <div v-else>Game is started. Press "p" to pause</div>
-      <Vecflow :clef="settings.clef" :note="vecflowNote" />
+      <div class="vecflows">
+        <Vecflow :clef="clef.firstVecflowClef" :note="vecflowNote.first" />
+        <Vecflow
+          v-if="clef.secondVecflowClef"
+          class="second-vecflow"
+          :clef="clef.secondVecflowClef"
+          :note="vecflowNote.second"
+        />
+      </div>
       <div class="error" v-if="state == 'error'">
         This note is {{ langNote }} ! <br />Press {{ noteKeytouch }} to continue
       </div>
@@ -381,5 +405,12 @@ a {
 .error {
   background-color: #fee;
   color: black;
+}
+.second-vecflow {
+  position: relative;
+  bottom: 80px;
+}
+.vecflows {
+  background-color: white;
 }
 </style>

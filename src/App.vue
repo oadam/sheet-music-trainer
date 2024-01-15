@@ -9,8 +9,8 @@ import {
   OptimizeFor,
   OptimizeForAccuracy,
   OptimizeForSpeed,
-} from "./components/OptimizeFor";
-import { useSettings } from "./components/Settings";
+} from "./types/OptimizeFor";
+import { useSettings } from "./types/Settings";
 
 const getNoteOctave = (note: number) => Math.floor(note / 7);
 const getNoteLabel = (note: number, langNotes: string[]) =>

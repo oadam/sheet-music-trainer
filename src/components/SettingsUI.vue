@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { OPTIMIZE_FOR_IDS, Settings } from "./Settings";
+import { OPTIMIZE_FOR_IDS, Settings } from "../types/Settings";
 
 const value = defineModel<Settings>({ required: true });
 </script>

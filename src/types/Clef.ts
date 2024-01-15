@@ -1,6 +1,6 @@
 export interface Clef {
-  readonly firstVecflowClef: string;
-  readonly secondVecflowClef: string | undefined;
+  readonly firstVecflowClef: "treble" | "bass";
+  readonly secondVecflowClef: "treble" | "bass" | undefined;
   encodeNote(note: number): string;
   getMinNote(extraBars: number): number;
   getMaxNote(extraBars: number): number;

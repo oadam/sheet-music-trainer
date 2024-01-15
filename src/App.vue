@@ -119,9 +119,13 @@ const allNotes = computed(() =>
   )
 );
 const optimizeFor = computed<OptimizeFor>(() => {
+  const badGuessTime =
+    average.value === undefined
+      ? 10
+      : average.value * settings.value.badGuessTimesAverage;
   switch (settings.value.optimizeFor) {
     case "speed":
-      return new OptimizeForSpeed(settings.value.badGuessTime);
+      return new OptimizeForSpeed(badGuessTime);
     case "accuracy":
       return OptimizeForAccuracy;
     default:

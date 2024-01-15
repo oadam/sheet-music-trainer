@@ -29,7 +29,9 @@ export class OptimizeForSpeed implements OptimizeFor {
   public constructor(private badGuessTime: number) {}
 
   getGuessBadness(guess: Guess) {
-    return guess.failed ? this.badGuessTime : guess.duration;
+    return guess.failed
+      ? this.badGuessTime
+      : Math.min(this.badGuessTime, guess.duration);
   }
   getBadnessDescription(value: number) {
     return value.toFixed(2) + "s";

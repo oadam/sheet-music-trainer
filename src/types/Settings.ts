@@ -6,10 +6,11 @@ const DEFAULT_SETTINGS = {
   extraBars: 1,
   lang: "fr" as "fr" | "en",
   clef: "treble" as "treble" | "bass" | "both",
-  badGuessTime: 5,
+  showAdvancedSettings: false,
+  badGuessTimesAverage: 3,
   takeStatsOver: 10,
   minSampleSize: 3,
-  optimizeFor: "accuracy" as "accuracy" | "speed",
+  optimizeFor: "speed" as "accuracy" | "speed",
   badAbondance: 3,
   goodScarcity: 3,
 };

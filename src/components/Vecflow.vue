@@ -16,7 +16,7 @@ const onNote = () => {
   }
   div.innerHTML = "";
   const vf = new Vex.Flow.Factory({
-    renderer: { width: 300, height: 220, elementId: id.value },
+    renderer: { width: 300, height: 250, elementId: id.value },
   });
   vf.getContext().scale(2, 2);
   const score = vf.EasyScore();

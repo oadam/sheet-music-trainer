@@ -412,7 +412,7 @@ a {
 }
 .second-vecflow {
   position: relative;
-  bottom: 80px;
+  bottom: 100px;
 }
 .vecflows {
   background-color: white;

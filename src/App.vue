@@ -199,26 +199,32 @@ const thresholds = computed<{
 });
 
 const displayNotes = computed<DisplayNote[]>(() => {
+  // precall all computed to avoid perf issue in loop
+  const langNotesValue = langNotes.value;
+  const badnessesValue = badnesses.value;
+  const thresholdsValue = thresholds.value;
+  const hiddenNotesValue = hiddenNotes.value;
+  const optimizeForValue = optimizeFor.value;
+  const worst = worstBadness.value;
+  const best = bestBadness.value;
   return allNotes.value
     .map((note) => {
-      const label = getNoteFullLabel(note, langNotes.value);
-      const badness = badnesses.value.get(note);
+      const label = getNoteFullLabel(note, langNotesValue);
       let rating: Rating | undefined;
       let percentValue: number | undefined;
       let badnessDescription: string | undefined;
+      const badness = badnessesValue.get(note);
       if (badness !== undefined) {
-        badnessDescription = optimizeFor.value.getBadnessDescription(badness);
-        percentValue =
-          (100 * (worstBadness.value - badness!)) /
-          (worstBadness.value - bestBadness.value);
+        badnessDescription = optimizeForValue.getBadnessDescription(badness);
+        percentValue = (100 * (worst - badness)) / (worst - best);
         if (
-          thresholds.value.good !== undefined &&
-          badness <= thresholds.value.good
+          thresholdsValue.good !== undefined &&
+          badness <= thresholdsValue.good
         ) {
           rating = "good";
         } else if (
-          thresholds.value.bad !== undefined &&
-          badness >= thresholds.value.bad
+          thresholdsValue.bad !== undefined &&
+          badness >= thresholdsValue.bad
         ) {
           rating = "bad";
         } else {
@@ -227,7 +233,7 @@ const displayNotes = computed<DisplayNote[]>(() => {
       }
       return {
         note,
-        hidden: hiddenNotes.value.has(encodeClefNote(note)),
+        hidden: hiddenNotesValue.has(encodeClefNote(note)),
         label,
         rating,
         percentValue,

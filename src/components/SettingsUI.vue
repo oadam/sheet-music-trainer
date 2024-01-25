@@ -63,8 +63,8 @@ const value = defineModel<Settings>({ required: true });
         <input type="number" v-model="value.badAbondance"
       /></label>
       <label
-        >Wrong guess time in multiples of average :
-        <input type="number" v-model="value.badGuessTimesAverage"
+        >Wrong guess time in seconds :
+        <input type="number" v-model="value.badGuessTime"
       /></label>
       <label
         >Sample size for rating :

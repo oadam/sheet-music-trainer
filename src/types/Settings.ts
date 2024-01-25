@@ -7,7 +7,7 @@ const DEFAULT_SETTINGS = {
   lang: "fr" as "fr" | "en",
   clef: "treble" as "treble" | "bass" | "both",
   showAdvancedSettings: false,
-  badGuessTimesAverage: 3,
+  badGuessTime: 10,
   takeStatsOver: 10,
   minSampleSize: 3,
   optimizeFor: "speed" as "accuracy" | "speed",

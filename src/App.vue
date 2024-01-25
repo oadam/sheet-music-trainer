@@ -119,13 +119,9 @@ const allNotes = computed(() =>
   )
 );
 const optimizeFor = computed<OptimizeFor>(() => {
-  const badGuessTime =
-    average.value === undefined
-      ? 10
-      : average.value * settings.value.badGuessTimesAverage;
   switch (settings.value.optimizeFor) {
     case "speed":
-      return new OptimizeForSpeed(badGuessTime);
+      return new OptimizeForSpeed(settings.value.badGuessTime);
     case "accuracy":
       return OptimizeForAccuracy;
     default:
@@ -199,32 +195,26 @@ const thresholds = computed<{
 });
 
 const displayNotes = computed<DisplayNote[]>(() => {
-  // precall all computed to avoid perf issue in loop
-  const langNotesValue = langNotes.value;
-  const badnessesValue = badnesses.value;
-  const thresholdsValue = thresholds.value;
-  const hiddenNotesValue = hiddenNotes.value;
-  const optimizeForValue = optimizeFor.value;
-  const worst = worstBadness.value;
-  const best = bestBadness.value;
   return allNotes.value
     .map((note) => {
-      const label = getNoteFullLabel(note, langNotesValue);
+      const label = getNoteFullLabel(note, langNotes.value);
+      const badness = badnesses.value.get(note);
       let rating: Rating | undefined;
       let percentValue: number | undefined;
       let badnessDescription: string | undefined;
-      const badness = badnessesValue.get(note);
       if (badness !== undefined) {
-        badnessDescription = optimizeForValue.getBadnessDescription(badness);
-        percentValue = (100 * (worst - badness)) / (worst - best);
+        badnessDescription = optimizeFor.value.getBadnessDescription(badness);
+        percentValue =
+          (100 * (worstBadness.value - badness!)) /
+          (worstBadness.value - bestBadness.value);
         if (
-          thresholdsValue.good !== undefined &&
-          badness <= thresholdsValue.good
+          thresholds.value.good !== undefined &&
+          badness <= thresholds.value.good
         ) {
           rating = "good";
         } else if (
-          thresholdsValue.bad !== undefined &&
-          badness >= thresholdsValue.bad
+          thresholds.value.bad !== undefined &&
+          badness >= thresholds.value.bad
         ) {
           rating = "bad";
         } else {
@@ -233,7 +223,7 @@ const displayNotes = computed<DisplayNote[]>(() => {
       }
       return {
         note,
-        hidden: hiddenNotesValue.has(encodeClefNote(note)),
+        hidden: hiddenNotes.value.has(encodeClefNote(note)),
         label,
         rating,
         percentValue,

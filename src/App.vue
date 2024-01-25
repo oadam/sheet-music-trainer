@@ -141,7 +141,7 @@ const bestBadness = computed(() =>
 
 const badnesses = computed<Map<number, number>>(() => {
   const result = new Map<number, number>();
-  nonHiddenNotes.value.forEach((note) => {
+  for (const note of nonHiddenNotes.value) {
     const guesses = lastGuesses.value.values.get(encodeClefNote(note));
     const guessesCount = guesses?.length || 0;
     if (guessesCount >= settings.value.minSampleSize) {
@@ -152,7 +152,7 @@ const badnesses = computed<Map<number, number>>(() => {
         ) / guesses!.length;
       result.set(note, badness);
     }
-  });
+  }
   return result;
 });
 

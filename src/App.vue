@@ -257,12 +257,11 @@ const chooseNextNote = () => {
       continue;
     }
     const s = statMap.get(n);
+    const rating = s?.rating || "bad";
     let prob: number;
-    if (!s || s.rating === undefined) {
-      prob = 1;
-    } else if (s.rating === "good") {
+    if (rating === "good") {
       prob = 1 / settings.value.goodScarcity;
-    } else if (s.rating === "bad") {
+    } else if (rating === "bad") {
       prob = settings.value.badAbondance;
     } else {
       prob = 1;

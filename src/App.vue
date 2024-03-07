@@ -330,6 +330,9 @@ window.onkeydown = (e) => {
     <div class="main">
       <h2>Game</h2>
       <div v-if="state == 'paused'">Game is paused. Press "s" to start</div>
+      <div class="error" v-else-if="state == 'error'">
+        This note is {{ langNote }} ! <br />Press {{ noteKeytouch }} to continue
+      </div>
       <div v-else>Game is started. Press "p" to pause</div>
       <div class="vecflows">
         <Vecflow :clef="clef.firstVecflowClef" :note="vecflowNote.first" />
@@ -339,9 +342,6 @@ window.onkeydown = (e) => {
           :clef="clef.secondVecflowClef"
           :note="vecflowNote.second"
         />
-      </div>
-      <div class="error" v-if="state == 'error'">
-        This note is {{ langNote }} ! <br />Press {{ noteKeytouch }} to continue
       </div>
     </div>
     <div class="stats">

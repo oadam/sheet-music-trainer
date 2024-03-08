@@ -356,15 +356,17 @@ window.onkeydown = (e) => {
       <div class="average" v-if="average !== undefined">
         Average : {{ optimizeFor.getBadnessDescription(average) }}
       </div>
-      <Note
-        v-for="note in displayNotes"
-        :key="'displayed-note-' + note.note"
-        :note="note"
-        :class="{ hidden: note.hidden }"
-        @click="toggleNote(note.note)"
-        @mouseenter="hoveredNote = note.note"
-        @mouseleave="hoveredNote = null"
-      />
+      <div class="notes">
+        <Note
+          v-for="note in displayNotes"
+          :key="'displayed-note-' + note.note"
+          :note="note"
+          :class="{ hidden: note.hidden }"
+          @click="toggleNote(note.note)"
+          @mouseenter="hoveredNote = note.note"
+          @mouseleave="hoveredNote = null"
+        />
+      </div>
     </div>
     <SettingsUI v-model="settings" />
   </div>
@@ -411,5 +413,8 @@ a {
 }
 .vecflows {
   background-color: white;
+}
+.notes {
+  column-count: 2;
 }
 </style>

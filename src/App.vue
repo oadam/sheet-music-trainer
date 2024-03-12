@@ -168,10 +168,8 @@ const average = computed<number | undefined>(() => {
 });
 
 const displayNotes = computed<DisplayNote[]>(() => {
-  const sortedNotes = [...badnesses.value.keys()];
-  sortedNotes.sort((a, b) => {
-    const aBad = badnesses.value.get(a);
-    const bBad = badnesses.value.get(b);
+  const sortedNotes = [...badnesses.value.entries()];
+  sortedNotes.sort(([_a, aBad], [_b, bBad]) => {
     return bBad! - aBad!;
   });
   const badNotesCount = Math.min(
@@ -182,9 +180,19 @@ const displayNotes = computed<DisplayNote[]>(() => {
     settings.value.mediumMaxSize,
     Math.round(sortedNotes.length / 3)
   );
-  const badNotes = new Set(sortedNotes.slice(0, badNotesCount));
+  const badNotes = new Set(
+    sortedNotes
+      .slice(0, badNotesCount)
+      // do not consider best badness as bad
+      .filter(([_n, badness]) => badness > bestBadness.value)
+      .map(([n, _badness]) => n)
+  );
   const mediumNotes = new Set(
-    sortedNotes.slice(badNotesCount, badNotesCount + mediumNotesCount)
+    sortedNotes
+      .slice(badNotes.size, badNotes.size + mediumNotesCount)
+      // do not consider best badness as medium
+      .filter(([_n, badness]) => badness > bestBadness.value)
+      .map(([n, _badness]) => n)
   );
   return allNotes.value
     .map((note) => {

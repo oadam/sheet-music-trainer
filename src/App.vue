@@ -167,34 +167,25 @@ const average = computed<number | undefined>(() => {
   return s.reduce((s, v) => s + v, 0) / s.length;
 });
 
-const thresholds = computed<{
-  good: number | undefined;
-  bad: number | undefined;
-}>(() => {
-  const s = scores.value;
-  if (s.length <= 3) {
-    return { good: undefined, bad: undefined };
-  }
-  const median = s[s.length / 2];
-  const good = s
-    .slice(0, s.length / 3)
-    .reverse()
-    .find((s) => s != median);
-  if (good === undefined) {
-    // nobody is better than median, hence we'll subdivide in good and medium (no bads)
-    return {
-      good: median,
-      bad: undefined,
-    };
-  } else {
-    return {
-      good,
-      bad: s.slice((s.length * 2) / 3).find((s) => s != median),
-    };
-  }
-});
-
 const displayNotes = computed<DisplayNote[]>(() => {
+  const sortedNotes = [...badnesses.value.keys()];
+  sortedNotes.sort((a, b) => {
+    const aBad = badnesses.value.get(a);
+    const bBad = badnesses.value.get(b);
+    return bBad! - aBad!;
+  });
+  const badNotesCount = Math.min(
+    settings.value.badMaxSize,
+    Math.round(sortedNotes.length / 3)
+  );
+  const mediumNotesCount = Math.min(
+    settings.value.mediumMaxSize,
+    Math.round(sortedNotes.length / 3)
+  );
+  const badNotes = new Set(sortedNotes.slice(0, badNotesCount));
+  const mediumNotes = new Set(
+    sortedNotes.slice(badNotesCount, badNotesCount + mediumNotesCount)
+  );
   return allNotes.value
     .map((note) => {
       const label = getNoteFullLabel(note, langNotes.value);
@@ -207,18 +198,12 @@ const displayNotes = computed<DisplayNote[]>(() => {
         percentValue =
           (100 * (worstBadness.value - badness!)) /
           (worstBadness.value - bestBadness.value);
-        if (
-          thresholds.value.good !== undefined &&
-          badness <= thresholds.value.good
-        ) {
-          rating = "good";
-        } else if (
-          thresholds.value.bad !== undefined &&
-          badness >= thresholds.value.bad
-        ) {
+        if (badNotes.has(note)) {
           rating = "bad";
-        } else {
+        } else if (mediumNotes.has(note)) {
           rating = "medium";
+        } else {
+          rating = "good";
         }
       }
       return {

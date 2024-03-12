@@ -13,6 +13,8 @@ const DEFAULT_SETTINGS = {
   optimizeFor: "speed" as "accuracy" | "speed",
   badAbondance: 3,
   goodScarcity: 3,
+  badMaxSize: 5,
+  mediumMaxSize: 5,
 };
 
 export type Settings = typeof DEFAULT_SETTINGS;

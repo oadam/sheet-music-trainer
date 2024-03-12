@@ -56,11 +56,19 @@ const value = defineModel<Settings>({ required: true });
       </div>
       <label
         >Good notes scarcity :
-        <input type="number" v-model="value.goodScarcity"
+        <input type="number" min="1" v-model="value.goodScarcity"
       /></label>
       <label
         >Bad notes abondance :
-        <input type="number" v-model="value.badAbondance"
+        <input type="number" min="1" v-model="value.badAbondance"
+      /></label>
+      <label
+        >Maximum number of bad notes :
+        <input type="number" min="1" v-model="value.badMaxSize"
+      /></label>
+      <label
+        >Maximum number of medium notes :
+        <input type="number" min="1" v-model="value.mediumMaxSize"
       /></label>
       <label
         >Wrong guess time in seconds :

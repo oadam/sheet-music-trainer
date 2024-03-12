@@ -168,31 +168,19 @@ const average = computed<number | undefined>(() => {
 });
 
 const displayNotes = computed<DisplayNote[]>(() => {
-  const sortedNotes = [...badnesses.value.entries()];
-  sortedNotes.sort(([_a, aBad], [_b, bBad]) => {
+  const suboptimalEntries = [...badnesses.value.entries()].filter(
+    ([_n, badness]) => badness > bestBadness.value
+  );
+  suboptimalEntries.sort(([_a, aBad], [_b, bBad]) => {
     return bBad! - aBad!;
   });
-  const badNotesCount = Math.min(
-    settings.value.badMaxSize,
-    Math.round(sortedNotes.length / 3)
-  );
-  const mediumNotesCount = Math.min(
-    settings.value.mediumMaxSize,
-    Math.round(sortedNotes.length / 3)
-  );
-  const badNotes = new Set(
-    sortedNotes
-      .slice(0, badNotesCount)
-      // do not consider best badness as bad
-      .filter(([_n, badness]) => badness > bestBadness.value)
-      .map(([n, _badness]) => n)
-  );
+  const suboptimalNotes = suboptimalEntries.map(([n, _badness]) => n);
+  const batchMaxSize = Math.round(allNotes.value.length / 3);
+  const badNotesCount = Math.min(settings.value.badMaxSize, batchMaxSize);
+  const mediumNotesCount = Math.min(settings.value.mediumMaxSize, batchMaxSize);
+  const badNotes = new Set(suboptimalNotes.slice(0, badNotesCount));
   const mediumNotes = new Set(
-    sortedNotes
-      .slice(badNotes.size, badNotes.size + mediumNotesCount)
-      // do not consider best badness as medium
-      .filter(([_n, badness]) => badness > bestBadness.value)
-      .map(([n, _badness]) => n)
+    suboptimalNotes.slice(badNotesCount, badNotesCount + mediumNotesCount)
   );
   return allNotes.value
     .map((note) => {

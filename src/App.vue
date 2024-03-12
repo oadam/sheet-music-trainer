@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import Vecflow from "./components/Vecflow.vue";
 import Note, { DisplayNote, Rating } from "./components/Note.vue";
 import SettingsUI from "./components/SettingsUI.vue";
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, defineAsyncComponent, onMounted, ref, watch } from "vue";
 import EvictingMultiMap from "./types/EvictingMultiMap";
 import {
   Guess,
@@ -12,6 +11,7 @@ import {
 } from "./types/OptimizeFor";
 import { useSettings } from "./types/Settings";
 import { Clef, BASS, TREBLE, BOTH } from "./types/Clef";
+const Vecflow = defineAsyncComponent(() => import("./components/Vecflow.vue"));
 
 const getNoteOctave = (note: number) => Math.floor(note / 7);
 const getNoteLabel = (note: number, langNotes: string[]) =>

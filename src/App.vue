@@ -337,7 +337,10 @@ window.onkeydown = (e) => {
       <div class="average" v-if="average !== undefined">
         Average : {{ optimizeFor.getBadnessDescription(average) }}
       </div>
-      <div class="notes">
+      <div
+        :style="{ visibility: state == 'started' ? 'hidden' : 'visible' }"
+        class="notes"
+      >
         <Note
           v-for="note in displayNotes"
           :key="'displayed-note-' + note.note"

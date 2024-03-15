@@ -102,7 +102,7 @@ const displayedNote = computed<number>(
       default:
         throw new Error('unknown state');
     }
-);
+});
 const vecflowNote = computed<{ first: string | null; second: string | null }>(
   () => {
     const note = displayedNote.value;

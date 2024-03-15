@@ -395,7 +395,7 @@ a {
 .average {
   font-weight: bold;
   margin-bottom: 1em;
-  font-size: 14px;
+  font-size: 18px;
 }
 .main {
   width: 300px;

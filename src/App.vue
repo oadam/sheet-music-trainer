@@ -90,7 +90,7 @@ const FRENCH_NOTES = ["Do", "Ré", "Mi", "Fa", "Sol", "La", "Si", "Do"];
 const langNotes = computed(() =>
   settings.value.lang == "fr" ? FRENCH_NOTES : ENGLISH_NOTES
 );
-const displayedNote = computed<number>(
+const displayedNote = computed(
   () => {
     switch (state.value) {
       case "paused":

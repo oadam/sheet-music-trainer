@@ -214,7 +214,11 @@ const displayNotes = computed<DisplayNote[]>(() => {
     .reverse();
 });
 
-const noteKeytouch = computed(() => langNote.value[0].toLowerCase());
+const noteToKeytouch = (note: string) => note[0].toLowerCase();
+const allKeytouch = computed(
+  () => new Set(langNotes.value.map(noteToKeytouch))
+);
+const noteKeytouch = computed(() => noteToKeytouch(langNote.value));
 const state = ref<"paused" | "started" | "error">("paused");
 const guessStartedTimestamp = ref(0);
 watch(state, (s) => {
@@ -282,6 +286,10 @@ window.onkeydown = (e) => {
       }
       break;
     case "started":
+      const notAGuess = !allKeytouch.value.has(e.key);
+      if (notAGuess) {
+        return;
+      }
       lastGuesses.value.add(
         encodeClefNote(gameNote.value),
         {

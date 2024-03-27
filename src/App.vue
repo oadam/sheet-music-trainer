@@ -90,9 +90,22 @@ const FRENCH_NOTES = ["Do", "Ré", "Mi", "Fa", "Sol", "La", "Si", "Do"];
 const langNotes = computed(() =>
   settings.value.lang == "fr" ? FRENCH_NOTES : ENGLISH_NOTES
 );
+const displayedNote = computed(
+  () => {
+    switch (state.value) {
+      case "paused":
+        return hoveredNote.value;
+      case "error":
+        return hoveredNote.value || gameNote.value;
+      case "started":
+        return gameNote.value;
+      default:
+        throw new Error('unknown state');
+    }
+});
 const vecflowNote = computed<{ first: string | null; second: string | null }>(
   () => {
-    const note = state.value == "paused" ? hoveredNote.value : gameNote.value;
+    const note = displayedNote.value;
     if (note === null) {
       return { first: null, second: null };
     }
@@ -390,7 +403,7 @@ a {
 .average {
   font-weight: bold;
   margin-bottom: 1em;
-  font-size: 14px;
+  font-size: 18px;
 }
 .main {
   width: 300px;

@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "vexflow": "^4.2.3",
-    "vue": "^3.4.27"
+    "vue": "^3.4.31"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.4",

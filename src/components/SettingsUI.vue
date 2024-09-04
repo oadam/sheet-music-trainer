@@ -40,6 +40,9 @@ const value = defineModel<Settings>({ required: true });
       Advanced settings {{ value.showAdvancedSettings ? "▾" : "▸" }}
     </h3>
     <template v-if="value.showAdvancedSettings">
+      <label
+        >Hide stats while playing : <input type="checkbox" v-model="value.hideStatsWhilePlaying"
+      /></label>
       <div class="radio-block">
         Optimize for :
         <div class="radio-container">

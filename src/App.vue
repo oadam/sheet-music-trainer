@@ -359,7 +359,7 @@ window.onkeydown = (e) => {
         Average : {{ optimizeFor.getBadnessDescription(average) }}
       </div>
       <div
-        :style="{ visibility: state == 'started' ? 'hidden' : 'visible' }"
+        :style="{ visibility: state == 'started' && settings.hideStatsWhilePlaying ? 'hidden' : 'visible' }"
         class="notes"
       >
         <Note

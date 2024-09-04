@@ -15,6 +15,7 @@ const DEFAULT_SETTINGS = {
   goodScarcity: 3,
   badMaxSize: 5,
   mediumMaxSize: 5,
+  hideStatsWhilePlaying: true,
 };
 
 export type Settings = typeof DEFAULT_SETTINGS;
